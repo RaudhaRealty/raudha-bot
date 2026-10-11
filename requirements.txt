@@ -1,5 +1,3 @@
 python-telegram-bot[job-queue]==22.8
 python-dotenv
-python-telegram-bot[job-queue]==22.8
-python-dotenv
 Flask

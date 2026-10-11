@@ -19,11 +19,9 @@ def start_bot():
     run_bot()
 
 if __name__ == "__main__":
-    # Jalankan bot di thread terpisah
     bot_thread = threading.Thread(target=start_bot)
     bot_thread.daemon = True
     bot_thread.start()
 
-    # Jalankan Flask di port yang diberikan Render
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
