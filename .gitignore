@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+.env
+subscribers.json
+gambar/arsitektur/*.jpg
