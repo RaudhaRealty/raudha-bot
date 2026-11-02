@@ -19,7 +19,7 @@ import socket
 import shutil
 from datetime import datetime as _dt
 from datetime import datetime
-
+import sqlite3
 
 # Import dari modul_sholat (untuk fitur bot lainnya)
 from modul_sholat import (
@@ -78,6 +78,8 @@ from modul_kesehatan import (
     init_db_kesehatan, get_program_aktif, daftar_rsvp, batal_rsvp, get_daftar_peserta,
     get_daftar_artikel, get_artikel
 )
+
+DB_PATH = os.path.join("data", "raudha.db")
 
 # --- 5. KONSTANTA & VALIDASI ENV ---
 BOT_TOKEN = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
@@ -155,20 +157,81 @@ async def safe_edit(query, text, reply_markup=None, parse_mode='Markdown'):
 
 
 # =====================================================================
+# HELPER: Subscription Masjid
+# =====================================================================
+def get_user_subscription(user_id):
+    """Ambil masjid yang di-subscribe user (pertama)."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT m.id, m.nama 
+        FROM user_subscription us
+        JOIN masjid m ON us.masjid_id = m.id
+        WHERE us.user_id = ? AND us.status = 'aktif'
+        LIMIT 1
+    """, (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return row
+
+
+def simpan_subscription(user_id, masjid_id):
+    """Simpan langganan masjid user."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        INSERT OR IGNORE INTO user_subscription (user_id, masjid_id) 
+        VALUES (?, ?)
+    """, (user_id, masjid_id))
+    conn.commit()
+    conn.close()
+
+
+# =====================================================================
 # 8. HANDLER UTAMA MENU /start
 # =====================================================================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Menu utama bot. Dipanggil dari /start maupun tombol 'Kembali ke Menu Utama'."""
     query = update.callback_query
-
-    # Cache-busting: timestamp unik di ujung URL
+    user_id = update.effective_user.id
+    
+    # Cek apakah user sudah subscribe masjid
+    sub = get_user_subscription(user_id)
+    
+    # Jika belum subscribe DAN belum skip onboarding → tampilkan onboarding
+    if not sub and not context.user_data.get('skip_onboarding'):
+        text = (
+            "👋 **Salam dan Selamat Datang di Raudha!**\n\n"
+            "Sebagai langkah pertama, mari kita temukan *Masjid Acuan* Anda.\n"
+            "Info kesehatan, kajian, dan kegiatan akan disesuaikan dengan masjid pilihan Anda."
+        )
+        keyboard = [
+            [InlineKeyboardButton("📍 Gunakan Lokasi Saya", callback_data="onboarding_gps")],
+            [InlineKeyboardButton("🕌 Pilih Masjid Manual", callback_data="onboarding_manual")],
+            [InlineKeyboardButton("⏭️ Lewati Dulu", callback_data="onboarding_skip")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        if query:
+            await safe_edit(query, text, reply_markup)
+        else:
+            await safe_reply(update.message, text, reply_markup)
+        return
+    
+    # ============ MENU UTAMA ============
     url_mini_app = f"{MINI_APP_URL}?t={int(time.time())}"
-
+    
     text = (
-        "👋 **Salam dan Selamat Datang di Raudha - Marbot yang melayani anda dalam mengkreasi kebaikan setiap hari, selaras dengan motto  - Recreate All The New Day:**\n\n"
+        "👋 **Salam dan Selamat Datang di Raudha - Marbot yang melayani anda dalam mengkreasi kebaikan setiap hari, selaras dengan motto - Recreate All The New Day:**\n\n"
         "Silakan gunakan tombol interaktif di bawah ini untuk mengakses setiap layanan:"
     )
-
+    
+    # Tampilkan nama masjid jika user subscribe
+    if sub:
+        text += f"\n\n🏠 *Masjid Acuan:* {sub[1]}"
+    elif context.user_data.get('skip_onboarding'):
+        text += f"\n\n_Anda belum memilih masjid acuan._"
+    
     keyboard = [
         [InlineKeyboardButton("🚀 Buka Aplikasi Hitung Amal & Zakat", web_app=WebAppInfo(url=url_mini_app))],
         [InlineKeyboardButton("🌅 Raudha Pagi Sehat", callback_data="menu_pagi_sehat"),
@@ -182,7 +245,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("ℹ️ About", callback_data="menu_about")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    
     if query:
         try:
             await query.answer()
@@ -191,6 +254,63 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(query, text, reply_markup)
     elif update.message:
         await safe_reply(update.message, text, reply_markup)
+
+async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    user_id = update.effective_user.id
+
+    if data == "onboarding_skip":
+        # Set flag skip di context, lalu tampilkan menu utama
+        context.user_data['skip_onboarding'] = True
+        await start(update, context)
+        return
+
+    elif data == "onboarding_gps":
+        await safe_edit(query, 
+            "📍 Silakan kirim lokasi Anda dengan menekan ikon klip (📎) → **Location**.",
+            InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="back_to_main")]]))
+        return
+
+    elif data == "onboarding_manual":
+        # Tampilkan daftar masjid
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT id, nama, tipe_masjid FROM masjid ORDER BY tipe_masjid DESC, nama ASC LIMIT 10")
+        rows = c.fetchall()
+        conn.close()
+        
+        if not rows:
+            await safe_edit(query, "❌ Belum ada masjid terdaftar.", 
+                           InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="back_to_main")]]))
+            return
+        
+        text = "🕌 **Pilih Masjid Acuan Anda:**"
+        keyboard = []
+        for mid, nama, tipe in rows:
+            icon = "⭐" if tipe == 'raudha' else "•"
+            keyboard.append([InlineKeyboardButton(f"{icon} {nama}", callback_data=f"pilih_masjid_{mid}")])
+        keyboard.append([InlineKeyboardButton("⬅️ Kembali", callback_data="back_to_main")])
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+        return
+
+    elif data.startswith("pilih_masjid_"):
+        masjid_id = int(data.replace("pilih_masjid_", ""))
+        simpan_subscription(user_id, masjid_id)
+        context.user_data.pop('skip_onboarding', None)  # Hapus flag skip
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT nama FROM masjid WHERE id=?", (masjid_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        nama = row[0] if row else "Masjid"
+        await safe_edit(query, 
+            f"✅ Anda sekarang mengikuti info dari **{nama}**.\n\nKetik /start untuk melihat menu.",
+            InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Menu Utama", callback_data="back_to_main")]]))
+        return        
 
 # =====================================================================
 # 8.1. COMMAND IDTV
@@ -646,19 +766,28 @@ async def handle_command_kota(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(error_msg, parse_mode='Markdown')
 
 async def handle_location_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler saat user kirim lokasi GPS.
+    - Simpan lokasi ke database
+    - Tampilkan jadwal sholat (Aladhan API)
+    - Tawarkan masjid terdekat untuk di-subscribe
+    """
     if not update.message or not update.message.location:
         return
     user_loc = update.message.location
     lat, lng = user_loc.latitude, user_loc.longitude
     telegram_id = update.effective_user.id
 
-    # Simpan ke DB
+    # 1. Simpan ke DB
     try:
         simpan_lokasi_user(telegram_id, lat, lng, kota="Lokasi GPS", sumber="gps")
     except Exception as e:
-        logger.warning(f"Gagal simpan lokasi user: {e}")
-
-    # Ambil jadwal dari API Aladhan
+        logger.error(f"Gagal cari masjid terdekat: {e}")
+        import traceback
+        traceback.print_exc()
+        await safe_reply(update.message, f"⚠️ Gagal mencari masjid terdekat: {e}")
+        
+    # 2. Ambil jadwal dari API Aladhan
     try:
         timings = get_jadwal(lat, lng)
         teks_jadwal = (
@@ -678,6 +807,31 @@ async def handle_location_received(update: Update, context: ContextTypes.DEFAULT
     except Exception as e:
         logger.error(f"Gagal ambil jadwal GPS: {e}")
         await safe_reply(update.message, "⚠️ Maaf, gagal mengambil jadwal sholat dari satelit.")
+
+    # 3. Tawarkan masjid terdekat untuk di-subscribe
+    try:
+        masjids = masjid_terdekat(lat, lng, radius_km=15, limit=5)
+        
+        if masjids:
+            text = "🕌 **Masjid di Sekitar Anda:**\n\n"
+            text += "Klik untuk mengikuti info kesehatan, kajian, dan kegiatan dari masjid tersebut:\n\n"
+            keyboard = []
+            for m in masjids:
+                icon = "⭐" if m.get('tipe_masjid') == 'raudha' else "•"
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"{icon} {m['nama']} ({m['jarak']} km)",
+                        callback_data=f"pilih_masjid_{m['id']}"
+                    )
+                ])
+            keyboard.append([InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")])
+            
+            await safe_reply(update.message, text, InlineKeyboardMarkup(keyboard))
+        else:
+            await safe_reply(update.message, "😔 Tidak ada masjid dalam radius 15 km.")
+    except Exception as e:
+        logger.warning(f"Gagal cari masjid terdekat: {e}")
+        await safe_reply(update.message, "⚠️ Gagal mencari masjid terdekat.")
 
 # =====================================================================
 # 11. HANDLER SUB-ACTION (Morning, Doa, Subscribe)
@@ -1527,6 +1681,9 @@ def main():
         r"kumail_arabonly_\d+|nudbah_arabonly_\d+|ziyarah_arabonly_\d+|shalawat_arabonly_\d+)$"
     )
     app.add_handler(CallbackQueryHandler(handle_doa_actions, pattern=doa_patterns))
+
+    # Handler Onboarding
+    app.add_handler(CallbackQueryHandler(handle_onboarding, pattern="^(onboarding_gps|onboarding_manual|onboarding_skip|pilih_masjid_)"))  
 
     logger.info("✅ Bot Raudha siap digunakan...")
 

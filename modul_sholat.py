@@ -6,7 +6,7 @@ import requests
 from datetime import datetime, timezone, timedelta
 from timezonefinder import TimezoneFinder
 import pytz
-
+from modul_database import hitung_jarak
 
 # =====================================================================
 # TAMBAHAN: HITUNG JADWAL DARI KOORDINAT (untuk GPS HP user via API Aladhan)
@@ -265,35 +265,46 @@ def ke_hijriah(tanggal=None):
 
 
 # --- 5. LOGIKA GEOLOCATION MASJID TERDEKAT ---
-def masjid_terdekat(lat, lng, radius_km=15, limit=5):
+def masjid_terdekat(lat, lng, radius_km=15, limit=10):
+    """
+    Cari masjid dengan prioritas berlapis:
+    Tier 1: Masjid Raudha (tipe_masjid='raudha')
+    Tier 2: Masjid Jaringan (tipe_masjid='jaringan')
+    Urut berdasarkan tier, lalu jarak.
+    """
     import sqlite3
-    db_path = os.path.join("data", "raudha.db")
-    if not os.path.exists(db_path) and os.path.exists("raudha.db"):
-        db_path = "raudha.db"
 
-    try:
-        conn = sqlite3.connect(db_path)
-        c = conn.cursor()
-        c.execute("SELECT nama, tipe, lat, lng, alamat FROM masjid")
-        rows = c.fetchall()
-        conn.close()
-    except Exception:
+    db_path = os.path.join("data", "raudha.db")
+    if not os.path.exists(db_path):
         return []
 
-    hasil = []
-    for nama, tipe, mlat, mlng, alamat in rows:
-        try:
-            from modul_database import hitung_jarak
-            jarak = hitung_jarak(lat, lng, mlat, mlng)
-            if jarak <= radius_km:
-                hasil.append({
-                    "nama": nama, "tipe": tipe,
-                    "jarak": round(jarak, 2), "alamat": alamat,
-                })
-        except Exception:
-            continue
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id, nama, tipe_masjid, lat, lng, alamat, kota FROM masjid")
+    rows = c.fetchall()
+    conn.close()
 
-    hasil.sort(key=lambda x: (0 if x["tipe"] == "raudha" else 1, x["jarak"]))
+    hasil = []
+    for mid, nama, tipe_masjid, mlat, mlng, alamat, kota in rows:
+        if mlat is None or mlng is None:
+            continue
+        jarak = hitung_jarak(lat, lng, mlat, mlng)
+        if jarak <= radius_km:
+            tier = 1 if tipe_masjid == 'raudha' else 2
+            hasil.append({
+                "id": mid,
+                "nama": nama,
+                "tier": tier,
+                "tipe_masjid": tipe_masjid,
+                "jarak": round(jarak, 2),
+                "alamat": alamat,
+                "kota": kota,
+                "lat": mlat,
+                "lng": mlng,
+            })
+
+    # Sort: Raudha dulu, lalu jarak
+    hasil.sort(key=lambda x: (x["tier"], x["jarak"]))
     return hasil[:limit]
 
 

@@ -150,6 +150,42 @@ def init_db():
         )
     ''')
 
+    # Tambah kolom tipe_masjid jika belum ada
+    try:
+        c.execute("ALTER TABLE masjid ADD COLUMN tipe_masjid TEXT DEFAULT 'jaringan'")
+    except sqlite3.OperationalError:
+        pass  # Kolom sudah ada
+
+        # Tabel Admin Penugasan (Banyak ke Banyak)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS admin_penugasan (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            masjid_id INTEGER NOT NULL,
+            jenis_layanan TEXT NOT NULL,
+            status TEXT DEFAULT 'aktif',
+            ditugaskan_oleh INTEGER,
+            tanggal_penugasan TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, masjid_id, jenis_layanan)
+        )
+    """)
+
+    # Tabel User Subscription (Langganan Masjid)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_subscription (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            masjid_id INTEGER NOT NULL,
+            jenis_layanan TEXT DEFAULT 'semua',
+            status TEXT DEFAULT 'aktif',
+            tanggal_daftar TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, masjid_id, jenis_layanan)
+        )
+    """)
+
+    # Pastikan Masjid Al Falah Raudha berstatus 'raudha'
+    c.execute("UPDATE masjid SET tipe_masjid = 'raudha' WHERE nama LIKE '%Al Falah%'")
+
     conn.commit()
     conn.close()
     print(f"[OK] Database siap: {DB_PATH}")
