@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Raudha Mini App</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background-color:#f8fafc !important; color:#1e293b !important; -webkit-user-select:none; user-select:none; }
+  .card-bg-white { background-color:#fff !important; }
+  .tab-hidden { display:none !important; }
+  .tab-visible { display:block !important; }
+  @keyframes overlayPop { 0%{opacity:0;transform:scale(0.9);} 100%{opacity:1;transform:scale(1);} }
+  @keyframes iconPop { 0%{opacity:0;transform:scale(0.3) rotate(-30deg);} 60%{transform:scale(1.15) rotate(5deg);} 100%{opacity:1;transform:scale(1) rotate(0);} }
+</style>
+</head>
+<body class="antialiased font-sans">
+
+<!-- HEADER -->
+<div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-2 shadow-md sticky top-0 z-50 rounded-b-3xl">
+  <div class="flex justify-between items-center max-w-md mx-auto">
+    <div>
+      <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">TOTAL HARTA TERKLARIFIKASI</p>
+      <h2 id="total-harta" class="text-2xl font-black tracking-tight text-white">Rp 0</h2>
+    </div>
+    <div class="text-right">
+      <span class="bg-emerald-700/60 border border-emerald-500/30 text-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
+        (Haul: 1 Syawal - Ramadhan)
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN WRAPPER -->
+<div class="max-w-md mx-auto p-4 space-y-6 pb-28">
+
+  <!-- TAB NAV -->
+  <div class="card-bg-white p-2 rounded-2xl shadow-sm border flex gap-1 sticky top-[72px] z-40">
+    <button id="btn-tab-zakat" onclick="switchMenuTab('zakat')" class="flex-1 py-2.5 text-center text-xs font-black rounded-xl bg-emerald-600 text-white transition-all duration-150">💰 Zakat</button>
+    <button id="btn-tab-bmt" onclick="switchMenuTab('bmt')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">🪙 BMT</button>
+    <button id="btn-tab-laporan" onclick="switchMenuTab('laporan')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">📊 Audit</button>
+    <button id="btn-tab-daftar" onclick="switchMenuTab('daftar')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">🏛️ Lembaga</button>
+    <button id="btn-tab-admin" onclick="switchMenuTab('admin')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150" style="display:none;">🔐 Admin</button>  
+  </div>
+
+
+  <!-- ==================== TAB 1: ZAKAT ==================== -->
+  <div id="tab-zakat" class="tab-content tab-visible space-y-4">
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>💵</span> Pendapatan & Kas Masuk</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Gaji & Honor (Rp)</label>
+          <input type="number" id="f-gaji" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hadiah/Bonus (Rp)</label>
+          <input type="number" id="f-hadiah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+    </div>
+
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🌾</span> Hasil Pertanian</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hasil Panen (Kg)</label>
+          <input type="number" id="f-tani" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Pengairan</label>
+          <select id="f-pengairan" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+            <option value="irigasi">🚜 Irigasi (5%)</option>
+            <option value="tadah_hujan">🌧️ Tadah Hujan (10%)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>👑</span> Logam Mulia & Temuan</h3>
+      <div class="grid grid-cols-3 gap-2">
+        <div class="col-span-2">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nominal Aset</label>
+          <input type="number" id="f-mewah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Satuan</label>
+          <select id="f-tipe-mewah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+            <option value="gram">Gram</option>
+            <option value="rupiah">Rupiah</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Harta Karun / Temuan (Rp)</label>
+        <input type="number" id="f-temuan" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+    </div>
+
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-rose-800 flex items-center gap-1.5 border-b pb-2"><span>📉</span> Pengeluaran</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rutin & Listrik (Rp)</label>
+          <input type="number" id="f-rutin" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sekolah (Rp)</label>
+          <input type="number" id="f-sekolah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Utang (Rp)</label>
+          <input type="number" id="f-utang" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sedekah (Rp)</label>
+          <input type="number" id="f-sedekah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-md space-y-2 border border-slate-800">
+      <div class="flex justify-between items-center text-xs"><span>Estimasi Zakat Maal + Tani:</span><span id="est-zakat" class="font-black text-emerald-400">Rp 0</span></div>
+      <div class="flex justify-between items-center text-xs"><span>Estimasi Khumus:</span><span id="est-khumus" class="font-black text-amber-400">Rp 0</span></div>
+      <div class="pt-2 border-t border-slate-700 flex items-center justify-between">
+        <span class="text-[10px] text-slate-300">Khumus Wajib (QS. Al-Anfal: 41)</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="toggle-khumus" class="sr-only peer" checked onchange="toggleKhumus(this)">
+          <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+        </label>
+      </div>
+      <div class="pt-2 border-t border-slate-700 text-[10px] text-slate-300 leading-relaxed">
+        <div class="flex justify-between"><span>Status Haul:</span><span id="info-haul" class="font-bold text-amber-300">Memuat...</span></div>
+        <p id="info-haul-detail" class="text-slate-400 mt-1">—</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: BMT ==================== -->
+  <div id="tab-bmt" class="tab-content tab-hidden space-y-4">
+    <div class="p-5 rounded-3xl border border-amber-200 space-y-3 shadow-sm" style="background:linear-gradient(135deg,#fffdf5 0%,#fff9de 100%) !important;">
+      <h3 class="text-sm font-black text-amber-900 flex items-center gap-1.5 border-b border-amber-200 pb-2"><span>🪙</span> Saldo Emas Proteksi Inflasi</h3>
+      <p class="text-xs text-amber-800 leading-relaxed">Dana simpanan Anda di BMT dikonversi otomatis ke logam mulia.</p>
+      <div class="card-bg-white p-4 rounded-xl border border-amber-200 flex justify-between items-center">
+        <div>
+          <p class="text-[10px] text-slate-400 font-bold uppercase">Nilai Kas BMT</p>
+          <p id="view-bmt-idr" class="text-lg font-black text-amber-700">Rp 0</p>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] text-slate-400 font-bold uppercase">Berat Murni</p>
+          <p class="text-xs font-bold text-slate-700"><span id="view-bmt-emas">0.0000</span> gr</p>
+        </div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Tambah Tabungan (Rp)</label>
+        <input type="number" id="f-bmt" value="0" class="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none font-bold text-sm focus:ring-2 focus:ring-amber-500">
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: AUDIT ==================== -->
+  <div id="tab-laporan" class="tab-content tab-hidden">
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-slate-800 border-b pb-2 flex items-center gap-1.5"><span>📊</span> Audit Finansial Syariah</h3>
+      <div id="laporan-detail" class="space-y-1 text-xs text-slate-600"><p class="text-slate-400">Memuat...</p></div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 4: DAFTAR LEMBAGA ==================== -->
+  <div id="tab-daftar" class="tab-content tab-hidden space-y-4">
+    <div id="daftar-status-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>📋</span> Status Pengajuan Lembaga</h3>
+      <div id="daftar-status-content" class="text-xs text-slate-600 space-y-2"><p class="text-slate-400">Memuat...</p></div>
+    </div>
+
+    <!-- ✨ [BARU] DASHBOARD ADMIN LEMBAGA -->
+    <div id="lembaga-dashboard-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2">
+        <span>🏦</span> Kelola Rekening Lembaga
+      </h3>
+      <p class="text-[10px] text-slate-500 leading-relaxed">Rekening ini yang muncul di halaman pembayaran user.</p>
+
+      <button onclick="bukaFormTambahRekening()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+        <span>➕</span> Tambah Rekening Baru
+      </button>
+
+      <div id="rekening-list-admin" class="space-y-2">
+        <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+      </div>
+
+      <div id="form-rekening-box" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2" style="display:none;">
+        <p id="form-rekening-title" class="text-xs font-bold text-emerald-800">Tambah Rekening Baru</p>
+        <input type="hidden" id="rek-id-edit" value="">
+        <input type="text" id="rek-nama-bank" placeholder="Nama Bank (BSI, BCA, dll)" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+        <input type="text" id="rek-nomor" placeholder="Nomor Rekening" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+        <input type="text" id="rek-atas-nama" placeholder="Atas Nama" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+        <div class="flex gap-2">
+          <button onclick="simpanRekening()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 rounded-lg text-xs">💾 Simpan</button>
+          <button onclick="tutupFormRekening()" class="flex-1 bg-slate-400 hover:bg-slate-500 text-white font-black py-2 rounded-lg text-xs">❌ Batal</button>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="daftar-form-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🏛️</span> Daftarkan Lembaga Anda</h3>
+      <p class="text-[10px] text-slate-500 leading-relaxed">Isi data lembaga. Tim Super Admin akan memverifikasi.</p>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Lembaga *</label>
+        <input type="text" id="dl-nama" placeholder="LAZIS Al-Ikhlas" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Jenis *</label>
+        <select id="dl-jenis" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+          <option value="LAZIS">LAZIS</option>
+          <option value="BAZNAS">BAZNAS</option>
+          <option value="BMT">BMT</option>
+          <option value="MASJID">Masjid</option>
+          <option value="PESANTREN">Pesantren</option>
+          <option value="LAINNYA">Lainnya</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">NPWP *</label>
+        <input type="text" id="dl-npwp" placeholder="00.000.000.0-000.000" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Alamat *</label>
+        <textarea id="dl-alamat" rows="2" placeholder="Jl. ..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Telepon *</label>
+          <input type="tel" id="dl-telepon" placeholder="021xxxxxx" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Email *</label>
+          <input type="email" id="dl-email" placeholder="admin@lembaga.id" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Anda (Admin) *</label>
+        <input type="text" id="dl-admin-nama" placeholder="Nama lengkap" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">WhatsApp Anda *</label>
+        <input type="tel" id="dl-admin-wa" placeholder="08xxxxxxxxxx" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Upload Dokumen — Opsional</label>
+        <input type="file" id="dl-file" accept=".jpg,.jpeg,.png,.pdf,.webp" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        <p class="text-[9px] text-slate-400 mt-1">Maks 5 MB. JPG/PNG/PDF/WEBP.</p>
+      </div>
+
+      <div id="dl-upload-status" class="text-[10px] text-slate-500"></div>
+
+      <button onclick="submitDaftarLembaga()" id="btn-daftar-submit" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+        <span>📤</span><span>Kirim Pengajuan Lembaga</span>
+      </button>
+
+      <p class="text-[9px] text-slate-400 text-center leading-relaxed">Dengan mengirim, Anda bersedia diverifikasi oleh Super Admin Raudha.</p>
+    </div> 
+    
+  </div>
+
+  <!-- ==================== TAB 5: ADMIN (khusus Super Admin) ==================== -->
+  <div id="tab-admin" class="tab-content tab-hidden space-y-4">
+
+    <!-- Ringkasan Admin -->
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5 border-b pb-2"><span>🔐</span> Panel Super Admin</h3>
+      <p class="text-[10px] text-slate-500 leading-relaxed">Kelola pengajuan lembaga, verifikasi tahap, dan aktifkan lembaga baru.</p>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-amber-50 p-2 rounded-xl border border-amber-200">
+          <p class="text-[9px] text-amber-700 font-bold uppercase">Pending</p>
+          <p id="admin-count-pending" class="text-lg font-black text-amber-700">0</p>
+        </div>
+        <div class="bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+          <p class="text-[9px] text-emerald-700 font-bold uppercase">Verified</p>
+          <p id="admin-count-verified" class="text-lg font-black text-emerald-700">0</p>
+        </div>
+        <div class="bg-rose-50 p-2 rounded-xl border border-rose-200">
+          <p class="text-[9px] text-rose-700 font-bold uppercase">Suspended</p>
+          <p id="admin-count-suspended" class="text-lg font-black text-rose-700">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daftar Pengajuan -->
+    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+      <h3 class="text-sm font-black text-slate-800 border-b pb-2 flex items-center gap-1.5"><span>📋</span> Pengajuan Menunggu Verifikasi</h3>
+      <div id="admin-pengajuan-list" class="space-y-2">
+        <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+      </div>
+    </div>
+
+    <!-- Detail Pengajuan (muncul saat klik) -->
+    <div id="admin-detail-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-purple-200 space-y-3" style="display:none;">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5"><span>🔍</span> Detail Lembaga</h3>
+        <button onclick="tutupDetailAdmin()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
+      </div>
+      <div id="admin-detail-content" class="text-xs text-slate-600 space-y-2"></div>
+
+      <!-- Form Verifikasi Tahap -->
+      <div class="bg-purple-50 p-3 rounded-xl border border-purple-200 space-y-2">
+        <p class="text-[10px] font-bold text-purple-800">Verifikasi Tahap:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="admin-verif-tahap" class="p-2 bg-white border border-purple-300 rounded-lg text-xs font-bold">
+            <option value="dokumen">Dokumen</option>
+            <option value="video_call">Video Call</option>
+            <option value="kunjungan">Kunjungan</option>
+            <option value="keputusan">Keputusan</option>
+          </select>
+          <select id="admin-verif-status" class="p-2 bg-white border border-purple-300 rounded-lg text-xs font-bold">
+            <option value="lolos">✅ Lolos</option>
+            <option value="gagal">❌ Gagal</option>
+          </select>
+        </div>
+        <input type="text" id="admin-verif-catatan" placeholder="Catatan verifikasi (opsional)" class="w-full p-2 bg-white border border-purple-300 rounded-lg text-xs">
+        <button onclick="submitVerifikasiTahap()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-2 rounded-lg text-xs">
+          📝 Simpan Tahap Verifikasi
+        </button>
+      </div>
+
+      <!-- Aksi -->
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="aktifkanLembaga()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 rounded-lg text-xs">
+          ✅ Aktifkan
+        </button>
+        <button onclick="suspendLembaga()" class="bg-rose-600 hover:bg-rose-700 text-white font-black py-2 rounded-lg text-xs">
+          ⚠️ Suspend
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div> <!-- END max-w-md -->
+
+<!-- GLOBAL ACTION BUTTON -->
+<div class="fixed-btn-wrap fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 z-50">
+  <div class="max-w-md mx-auto">
+    <button id="btn-submit" onclick="simpanDataSyariah()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+      <span>🚀</span><span>Kirim Laporan & Sinkronisasi Jurnal</span>
+    </button>
+  </div>
+</div>
+
+<!-- OVERLAY SUKSES -->
+<div id="success-overlay" class="fixed inset-0 z-[9999] items-center justify-center p-5" style="display:none; background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 100%);">
+  <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden" style="animation: overlayPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+    <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 pt-10 pb-8 px-6 text-center relative">
+      <div class="relative inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-3" style="animation: iconPop 0.5s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;">
+        <svg class="w-11 h-11 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <h2 class="text-xl font-black text-white tracking-tight">Laporan Berhasil!</h2>
+      <p class="text-xs text-emerald-100 mt-1">Alhamdulillah, data tersimpan.</p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="bg-slate-50 rounded-2xl p-4 space-y-2.5 border border-slate-100">
+        <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-slate-500 uppercase">Zakat Maal + Tani</span><span id="overlay-zakat" class="text-sm font-black text-emerald-700">Rp 0</span></div>
+        <div class="h-px bg-slate-200"></div>
+        <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-slate-500 uppercase">Khumus Pembersih</span><span id="overlay-khumus" class="text-sm font-black text-amber-600">Rp 0</span></div>
+      </div>
+      <div id="overlay-status-box" class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+        <div id="overlay-spinner" class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" style="display: block;"></div>
+        <div id="overlay-check" class="w-5 h-5 flex items-center justify-center flex-shrink-0" style="display: none;"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+        <p id="overlay-status" class="text-xs font-semibold text-emerald-800 leading-snug">Mengirim ke bot Telegram...</p>
+      </div>
+      <button onclick="tutupAplikasi()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        Tutup Aplikasi
+      </button>
+      <p class="text-[10px] text-center text-slate-400 leading-relaxed">Anda bisa menunggu balasan admin di chat Telegram<br>setelah menutup jendela ini.</p>
+    </div>
+  </div>
+</div>
+
+<!-- TELEGRAM SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<script>
+  // =====================================================================
+  // KONFIGURASI
+  // =====================================================================
+  const CFG = {{ cfg|tojson }};
+  const HARGA_EMAS_BASE   = CFG.harga_emas;
+  const BASELINE_AWAL     = CFG.baseline_awal;
+  const HARGA_TANI_PER_KG = CFG.harga_tani_per_kg;
+  const NISAB_EMAS_GRAM   = CFG.nisab_emas_gram;
+  const NISAB_TANI_KG     = CFG.nisab_pertanian_kg;
+  const KADAR_ZAKAT       = CFG.kadar_zakat;
+  const KADAR_TANI_ALAMI  = CFG.kadar_tanah_alami;
+  const KADAR_TANI_BIAYA  = CFG.kadar_tanah_biaya;
+  const KADAR_KHUMUS      = CFG.kadar_khumus;
+
+// ===== USER ID (versi debug) =====
+let userId = 123456789;
+let currentLembagaId = null;
+console.log('[DEBUG] userId setelah init:', userId);
+
+// Coba ambil dari Telegram (kalau ada)
+try {
+  if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+    userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+    console.log('[DEBUG] userId dari Telegram:', userId);
+  } else {
+    console.log('[DEBUG] Bukan Telegram, pakai default:', userId);
+  }
+} catch(e) {
+  console.log('[DEBUG] Error Telegram:', e, 'pakai default:', userId);
+}
+
+// Paksa ulang setelah semua init
+window.userId = userId;
+console.log('[DEBUG] userId final:', window.userId);
+
+  // =====================================================================
+  // HELPERS
+  // =====================================================================
+  function formatRupiah(val) {
+    return 'Rp ' + parseInt(val || 0).toLocaleString('id-ID').replace(/,/g, '.');
+  }
+
+  function bacaInputAman(id, adalahSelect = false) {
+    const el = document.getElementById(id);
+    if (!el) return adalahSelect ? 'irigasi' : 0;
+    return adalahSelect ? el.value : (parseFloat(el.value) || 0);
+  }
+
+  function animateNumber(el, target, duration = 800, formatter = formatRupiah) {
+    if (!el) return;
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.innerText = formatter(Math.round(target * eased));
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // =====================================================================
+  // HITUNG ZAKAT OTOMATIS
+  // =====================================================================
+  function hitungZakatOtomatis() {
+    const gaji = bacaInputAman('f-gaji');
+    const hadiah = bacaInputAman('f-hadiah');
+    const tani = bacaInputAman('f-tani');
+    const pengairan = bacaInputAman('f-pengairan', true);
+    const mewahVal = bacaInputAman('f-mewah');
+    const tipeMewah = bacaInputAman('f-tipe-mewah', true);
+    const temuan = bacaInputAman('f-temuan');
+    const bmt = bacaInputAman('f-bmt');
+    const rutin = bacaInputAman('f-rutin');
+    const sekolah = bacaInputAman('f-sekolah');
+    const utang = bacaInputAman('f-utang');
+    const sedekah = bacaInputAman('f-sedekah');
+
+    const totalPengeluaran = rutin + sekolah + utang + sedekah;
+    const nilaiMewah = (tipeMewah === 'gram') ? (mewahVal * HARGA_EMAS_BASE) : mewahVal;
+    const nilaiTani = tani * HARGA_TANI_PER_KG;
+    const totalHarta = Math.max(0, (BASELINE_AWAL + gaji + hadiah + nilaiMewah + bmt + nilaiTani + temuan) - totalPengeluaran);
+
+    let zakatTani = 0;
+    if (tani >= NISAB_TANI_KG) {
+      zakatTani = tani * (pengairan === 'tadah_hujan' ? KADAR_TANI_ALAMI : KADAR_TANI_BIAYA) * HARGA_TANI_PER_KG;
+    }
+    const nisab = NISAB_EMAS_GRAM * HARGA_EMAS_BASE;
+    const zakatMaal = totalHarta >= nisab ? totalHarta * KADAR_ZAKAT : 0;
+    const surplus = Math.max(0, (gaji + hadiah) - totalPengeluaran);
+    const khumusTemuan = temuan * KADAR_KHUMUS;
+    const khumusSurplus = surplus * KADAR_KHUMUS;
+
+    document.getElementById('total-harta').innerText = formatRupiah(totalHarta);
+    document.getElementById('est-zakat').innerText = formatRupiah(zakatMaal + zakatTani);
+    document.getElementById('est-khumus').innerText = formatRupiah(khumusTemuan + khumusSurplus);
+  }
+
+  // =====================================================================
+  // NAVIGASI TAB
+  // =====================================================================
+  function switchMenuTab(name) {
+    document.querySelectorAll('.tab-content').forEach(el => {
+      el.classList.remove('tab-visible'); el.classList.add('tab-hidden');
+    });
+    const aktif = document.getElementById('tab-' + name);
+    if (aktif) { aktif.classList.remove('tab-hidden'); aktif.classList.add('tab-visible'); }
+
+    ['zakat','bmt','laporan','daftar','admin'].forEach(t => {
+      const btn = document.getElementById('btn-tab-' + t);
+      if (!btn) return;
+      if (t === name) {
+        btn.classList.add('bg-emerald-600','text-white','font-black');
+        btn.classList.remove('text-slate-500','font-bold','hover:bg-slate-100');
+      } else {
+        btn.classList.remove('bg-emerald-600','text-white','font-black');
+        btn.classList.add('text-slate-500','font-bold','hover:bg-slate-100');
+      }
+    });
+    if (name === 'laporan') muatDataPusat();
+    if (name === 'daftar') cekStatusLembaga();
+    if (name === 'admin') muatDaftarPengajuan();
+  }
+
+  // =====================================================================
+  // MUAT DATA PUSAT
+  // =====================================================================
+  function muatDataPusat() {
+    fetch('/api/laporan/' + userId)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.status !== 'success') return;
+        const l = d.laporan;
+
+        const elIdr = document.getElementById('view-bmt-idr');
+        const elEmas = document.getElementById('view-bmt-emas');
+        if (elIdr) elIdr.innerText = formatRupiah(l.saldo_bmt_idr || 0);
+        if (elEmas) elEmas.innerText = l.saldo_bmt_emas || '0.0000';
+
+        const lap = document.getElementById('laporan-detail');
+        if (lap) lap.innerHTML = `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;"><span>Harta Bersih:</span><strong>${formatRupiah(l.total_penghasilan)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#dc2626;"><span>Zakat Maal & Tani:</span><strong>${formatRupiah(l.total_zakat)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Khumus:</span><strong>${formatRupiah(l.total_khumus)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;color:#059669;font-weight:bold;"><span>Status:</span><span>${l.zakat_penghasilan_wajib ? 'Muzakki Wajib' : 'Muzakki Baseline'}</span></div>`;
+
+        const infoEl = document.getElementById('info-haul');
+        const detailEl = document.getElementById('info-haul-detail');
+        if (infoEl && detailEl) {
+          if (l.haul_terpenuhi) {
+            infoEl.innerText = '✅ Haul Terpenuhi';
+            infoEl.className = 'font-bold text-emerald-300';
+            detailEl.innerText = `Zakat maal wajib: ${formatRupiah(l.zakat_maal_wajib)}`;
+          } else if (l.tanggal_mulai_haul) {
+            infoEl.innerText = '⏳ Belum Haul';
+            infoEl.className = 'font-bold text-amber-300';
+            detailEl.innerText = `Sisa ${l.sisa_hari_haul} hari (mulai ${l.tanggal_mulai_haul})`;
+          } else {
+            infoEl.innerText = '🆕 Belum ada data';
+            infoEl.className = 'font-bold text-slate-400';
+            detailEl.innerText = 'Input data pertama Anda untuk mulai haul';
+          }
+        }
+
+        const toggleKhumusEl = document.getElementById('toggle-khumus');
+        if (toggleKhumusEl && typeof l.khumus_aktif !== 'undefined') {
+          toggleKhumusEl.checked = l.khumus_aktif;
+        }
+      })
+      .catch(e => console.log('Init kosong', e));
+  }
+
+  // =====================================================================
+  // TOGGLE KHUMUS
+  // =====================================================================
+  function toggleKhumus(el) {
+    const aktif = el.checked;
+    if (!aktif) {
+      const konfirmasi = confirm(
+        "⚠️ PERINGATAN\n\n" +
+        "Khumus (1/5 harta) adalah kewajiban yang diatur dalam QS. Al-Anfal: 41:\n\n" +
+        "\"Ketahuilah, sesungguhnya apa saja yang dapat kamu peroleh sebagai rampasan perang, " +
+        "maka sesungguhnya seperlima untuk Allah, Rasul, kerabat Rasul, anak-anak yatim, " +
+        "orang-orang miskin dan ibnussabil...\"\n\n" +
+        "Apakah Anda yakin ingin menonaktifkan perhitungan khumus?"
+      );
+      if (!konfirmasi) { el.checked = true; return; }
+    }
+    fetch('/api/config/khumus', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId, aktif: aktif})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'success') { hitungZakatOtomatis(); muatDataPusat(); }
+      else { alert('Gagal: ' + d.message); el.checked = !aktif; }
+    })
+    .catch(e => { alert('Error: ' + e); el.checked = !aktif; });
+  }
+
+  // =====================================================================
+  // SUBMIT LAPORAN
+  // =====================================================================
+  function simpanDataSyariah() {
+    const mewahVal = parseFloat(document.getElementById('f-mewah').value) || 0;
+    const tipeMewah = document.getElementById('f-tipe-mewah').value;
+    const nilaiMewahRupiah = (tipeMewah === 'gram') ? (mewahVal * HARGA_EMAS_BASE) : mewahVal;
+
+    const payload = {
+      user_id: userId, jenis: 'jurnal_web',
+      gaji: parseFloat(document.getElementById('f-gaji').value) || 0,
+      honor: 0,
+      hadiah: parseFloat(document.getElementById('f-hadiah').value) || 0,
+      pertanian_kg: parseFloat(document.getElementById('f-tani').value) || 0,
+      jenis_pengairan: document.getElementById('f-pengairan').value,
+      benda_mewah: nilaiMewahRupiah,
+      temuan_laut_karun: parseFloat(document.getElementById('f-temuan').value) || 0,
+      simpanan_bmt_idr: parseFloat(document.getElementById('f-bmt').value) || 0,
+      pengeluaran_rutin: parseFloat(document.getElementById('f-rutin').value) || 0,
+      pengeluaran_sekolah: parseFloat(document.getElementById('f-sekolah').value) || 0,
+      pengeluaran_utang: parseFloat(document.getElementById('f-utang').value) || 0,
+      pengeluaran_sedekah: parseFloat(document.getElementById('f-sedekah').value) || 0,
+    };
+
+    const btn = document.getElementById('btn-submit');
+    const icon = btn.querySelector('span:first-child');
+    const text = btn.querySelector('span:last-child');
+    btn.disabled = true; icon.textContent = '⏳'; text.textContent = 'Mengirim...';
+
+    fetch('/api/input/syariah', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'success') throw new Error(d.message || 'Gagal');
+      hitungZakatOtomatis();
+      muatDataPusat();
+
+      const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
+      const khumusNum = parseInt(document.getElementById('est-khumus').innerText.replace(/[^0-9]/g, '')) || 0;
+
+      document.getElementById('overlay-zakat').innerText = 'Rp 0';
+      document.getElementById('overlay-khumus').innerText = 'Rp 0';
+      document.getElementById('success-overlay').style.display = 'flex';
+      document.getElementById('overlay-status').innerText = 'Mengirim ke bot...';
+
+      setTimeout(() => {
+        animateNumber(document.getElementById('overlay-zakat'), zakatNum, 900);
+        animateNumber(document.getElementById('overlay-khumus'), khumusNum, 1100);
+      }, 250);
+
+      const dataBot = { layanan: 'LAZIS', zakat: zakatNum, khumus: khumusNum, ts: Date.now() };
+      setTimeout(() => kirimKeBot(dataBot, 3), 2500);
+    })
+    .catch(err => {
+      document.getElementById('success-overlay').style.display = 'none';
+      alert('❌ ' + err.message);
+      btn.disabled = false; icon.textContent = '🚀'; text.textContent = 'Kirim Laporan & Sinkronisasi Jurnal';
+    });
+  }
+
+  function kirimKeBot(data, sisa) {
+    const status = document.getElementById('overlay-status');
+    const box = document.getElementById('overlay-status-box');
+    const spinner = document.getElementById('overlay-spinner');
+    const check = document.getElementById('overlay-check');
+
+    try {
+      if (!window.Telegram?.WebApp) {
+        status.innerText = '⚠️ Bukan di Telegram (mode browser).';
+        return;
+      }
+      window.Telegram.WebApp.sendData(JSON.stringify(data));
+      try { window.Telegram.WebApp.HapticFeedback?.notificationOccurred('success'); } catch(e) {}
+
+      spinner.style.display = 'none';
+      check.style.display = 'flex';
+      box.className = 'flex items-center gap-3 bg-emerald-100 border border-emerald-300 rounded-xl p-3';
+      status.innerText = '✅ Terkirim ke bot. Silakan tunggu balasan admin di chat Telegram.';
+      status.className = 'text-xs font-bold text-emerald-900 leading-snug';
+    } catch(e) {
+      console.error('sendData gagal:', e);
+      if (sisa > 0) {
+        status.innerText = `⚠️ Coba ulang (${sisa})...`;
+        setTimeout(() => kirimKeBot(data, sisa-1), 1000);
+      } else {
+        spinner.style.display = 'none';
+        box.className = 'flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-xl p-3';
+        status.innerText = '⚠️ Gagal kirim ke bot.';
+        status.className = 'text-xs font-bold text-rose-800 leading-snug';
+      }
+    }
+  }
+
+  function tutupAplikasi() {
+    try {
+      if (window.Telegram?.WebApp) window.Telegram.WebApp.close();
+      else alert('Mode browser: aplikasi seharusnya tertutup.');
+    } catch (e) { console.log('Close error:', e); }
+  }
+
+  // =====================================================================
+  // DAFTAR LEMBAGA
+  // =====================================================================
+  async function cekStatusLembaga() {
+    try {
+      const r = await fetch('/api/lembaga/status/' + userId);
+      const d = await r.json();
+      const statusBox = document.getElementById('daftar-status-box');
+      const formBox = document.getElementById('daftar-form-box');
+      const statusContent = document.getElementById('daftar-status-content');
+
+      if (d.kondisi === 'belum_terdaftar' || d.kondisi === 'bukan_admin_lembaga') {
+        if (statusBox) statusBox.style.display = 'none';
+        if (formBox) formBox.style.display = 'block';
+        return;
+      }
+
+      if (statusBox) statusBox.style.display = 'block';
+      if (formBox) formBox.style.display = 'none';
+
+      const lem = d.lembaga;
+      const statusColor = {'pending':'text-amber-600','verified':'text-emerald-600','rejected':'text-rose-600','suspended':'text-rose-600'}[lem.status] || 'text-slate-600';
+      const statusLabel = {'pending':'⏳ Menunggu Verifikasi','verified':'✅ Terverifikasi','rejected':'❌ Ditolak','suspended':'⚠️ Disuspend'}[lem.status] || lem.status;
+
+      let tahapHtml = '';
+      if (d.verifikasi && d.verifikasi.length > 0) {
+        tahapHtml = '<div class="mt-3 pt-3 border-t border-slate-100"><p class="font-bold text-slate-700 mb-1">Riwayat Verifikasi:</p>' +
+          d.verifikasi.map(v => {
+            const icon = v.status === 'lolos' ? '✅' : v.status === 'gagal' ? '❌' : '⏳';
+            return `<div class="flex justify-between text-[10px] py-1"><span>${icon} ${v.tahap}</span><span class="text-slate-500">${v.catatan || '-'}</span></div>`;
+          }).join('') + '</div>';
+      }
+
+      if (statusContent) {
+        statusContent.innerHTML = `
+          <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Nama</span><strong>${lem.nama}</strong></div>
+          <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Jenis</span><strong>${lem.jenis}</strong></div>
+          <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Status</span><strong class="${statusColor}">${statusLabel}</strong></div>
+          ${lem.kode_verifikasi ? `<div class="flex justify-between border-b pb-2"><span class="text-slate-500">Kode Verifikasi</span><strong>${lem.kode_verifikasi}</strong></div>` : ''}
+          ${tahapHtml}
+          ${lem.status === 'verified' ? '<p class="mt-3 text-[10px] text-emerald-600 font-bold text-center">🎉 Anda kini admin lembaga resmi.</p>' : ''}
+          ${lem.status === 'pending' ? '<p class="mt-3 text-[10px] text-amber-600 text-center">Tim Raudha akan menghubungi Anda via WhatsApp.</p>' : ''}
+        `;
+      }
+
+      // ✨ Tampilkan dashboard admin lembaga
+      const dashBox = document.getElementById('lembaga-dashboard-box');
+      if (dashBox) {
+        if (lem.status === 'verified') {
+          dashBox.style.display = 'block';
+          currentLembagaId = lem.id;
+          muatRekeningAdmin();
+        } else {
+          dashBox.style.display = 'none';
+        }
+      }
+
+    } catch (e) { console.log('Error cek status lembaga:', e); }
+  }
+
+  async function submitDaftarLembaga() {
+    const btn = document.getElementById('btn-daftar-submit');
+    const uploadStatus = document.getElementById('dl-upload-status');
+
+    const nama = document.getElementById('dl-nama').value.trim();
+    const jenis = document.getElementById('dl-jenis').value;
+    const npwp = document.getElementById('dl-npwp').value.trim();
+    const alamat = document.getElementById('dl-alamat').value.trim();
+    const telepon = document.getElementById('dl-telepon').value.trim();
+    const email = document.getElementById('dl-email').value.trim();
+    const adminNama = document.getElementById('dl-admin-nama').value.trim();
+    const adminWa = document.getElementById('dl-admin-wa').value.trim();
+
+    if (!nama || !npwp || !alamat || !telepon || !email || !adminNama || !adminWa) {
+      alert('⚠️ Mohon isi semua field bertanda *.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span><span>Mengirim...</span>';
+
+    try {
+      let dokumenUrl = '';
+      const fileInput = document.getElementById('dl-file');
+      if (fileInput.files && fileInput.files[0]) {
+        uploadStatus.innerText = '⏳ Mengupload dokumen...';
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('user_id', userId);
+        formData.append('jenis_dokumen', 'dokumen_lembaga');
+        const upRes = await fetch('/api/upload/dokumen', { method: 'POST', body: formData });
+        const upData = await upRes.json();
+        if (upData.status !== 'success') {
+          uploadStatus.innerText = '❌ ' + upData.message;
+          throw new Error('Upload gagal');
+        }
+        dokumenUrl = upData.url;
+        uploadStatus.innerText = '✅ Dokumen terupload.';
+      }
+
+      const payload = {
+        user_id: userId, nama, jenis, npwp, alamat,
+        no_telepon: telepon, email_resmi: email,
+        dokumen_url: dokumenUrl,
+        nama_admin: adminNama, no_whatsapp_admin: adminWa,
+      };
+
+      const r = await fetch('/api/lembaga/daftar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+
+      if (d.status === 'success') {
+        alert('✅ Pengajuan berhasil dikirim!\n\nTim Super Admin Raudha akan menghubungi Anda via WhatsApp.');
+        cekStatusLembaga();
+      } else {
+        alert('❌ ' + d.message);
+      }
+    } catch (e) {
+      alert('❌ ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>📤</span><span>Kirim Pengajuan Lembaga</span>';
+    }
+  }
+
+// =====================================================================
+// PANEL SUPER ADMIN
+// =====================================================================
+
+let currentLembagaData = null;
+
+async function cekSuperAdmin() {
+  try {
+    const r = await fetch('/api/admin/lembaga/pending?user_id=' + userId);
+    if (!r.ok) {
+      return false;
+    }
+    const d = await r.json();
+    if (d.status === 'success') {
+      // User adalah super_admin → tampilkan tab
+      const btnAdmin = document.getElementById('btn-tab-admin');
+      if (btnAdmin) btnAdmin.style.display = 'block';
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.log('Cek super admin error:', e);
+    return false;
+  }
+}
+
+async function muatDaftarPengajuan() {
+  const listEl = document.getElementById('admin-pengajuan-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">Memuat...</p>';
+
+  try {
+    // Fetch pending
+    const rPending = await fetch('/api/admin/lembaga/pending?user_id=' + userId);
+    const dPending = await rPending.json();
+    
+    if (dPending.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-4">❌ ' + (dPending.message || 'Gagal memuat') + '</p>';
+      return;
+    }
+
+    // Update pending count
+    const countPending = document.getElementById('admin-count-pending');
+    if (countPending) countPending.innerText = dPending.lembaga.length;
+
+    // Fetch verified
+    try {
+      const rVerified = await fetch('/api/lembaga');
+      const dVerified = await rVerified.json();
+      const countVerified = document.getElementById('admin-count-verified');
+      if (countVerified) countVerified.innerText = (dVerified.lembaga || []).length;
+    } catch(e) { console.log('Fetch verified error:', e); }
+
+    // Render daftar pending
+    if (dPending.lembaga.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">Tidak ada pengajuan pending. ✅</p>';
+      return;
+    }
+
+    listEl.innerHTML = dPending.lembaga.map(l => `
+      <div onclick="bukaDetailAdmin(${l.id})" class="bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-pointer hover:bg-amber-100 transition">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p class="font-black text-slate-800 text-sm">${l.nama}</p>
+            <p class="text-[10px] text-slate-500 mt-1">${l.jenis} • ${l.no_telepon}</p>
+            <p class="text-[10px] text-slate-400 mt-1">${l.alamat || '-'}</p>
+          </div>
+          <span class="bg-amber-500 text-white text-[9px] font-bold px-2 py-1 rounded-full">PENDING</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-4">❌ ' + e.message + '</p>';
+  }
+}
+
+async function bukaDetailAdmin(lembagaId) {
+  currentLembagaId = lembagaId;
+  const box = document.getElementById('admin-detail-box');
+  const content = document.getElementById('admin-detail-content');
+  if (!box || !content) return;
+
+  box.style.display = 'block';
+  content.innerHTML = '<p class="text-slate-400 text-xs py-4">Memuat detail...</p>';
+
+  try {
+    const r = await fetch('/api/admin/lembaga/' + lembagaId + '/detail?user_id=' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      content.innerHTML = '<p class="text-rose-600">❌ ' + (d.message || 'Gagal') + '</p>';
+      return;
+    }
+
+    currentLembagaData = d;
+    const lem = d.lembaga;
+
+    let tahapHtml = '';
+    if (d.verifikasi && d.verifikasi.length > 0) {
+      tahapHtml = '<div class="mt-2"><p class="font-bold text-slate-700 mb-1">Riwayat Verifikasi:</p>' +
+        d.verifikasi.map(v => {
+          const icon = v.status === 'lolos' ? '✅' : v.status === 'gagal' ? '❌' : '⏳';
+          return `<div class="flex justify-between text-[10px] py-1"><span>${icon} ${v.tahap}</span><span class="text-slate-500">${v.catatan || '-'}</span></div>`;
+        }).join('') + '</div>';
+    }
+
+    const statusColor = {
+      'pending': 'text-amber-600',
+      'verified': 'text-emerald-600',
+      'rejected': 'text-rose-600',
+      'suspended': 'text-rose-600'
+    }[lem.status] || 'text-slate-600';
+
+    content.innerHTML = `
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">Nama</span>
+        <strong>${lem.nama}</strong>
+      </div>
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">Jenis</span>
+        <strong>${lem.jenis}</strong>
+      </div>
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">Status</span>
+        <strong class="${statusColor}">${lem.status.toUpperCase()}</strong>
+      </div>
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">NPWP</span>
+        <strong>${lem.npwp || '-'}</strong>
+      </div>
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">Telepon</span>
+        <strong>${lem.no_telepon || '-'}</strong>
+      </div>
+      <div class="flex justify-between border-b pb-2">
+        <span class="text-slate-500">Email</span>
+        <strong>${lem.email_resmi || '-'}</strong>
+      </div>
+      <div class="border-b pb-2">
+        <span class="text-slate-500 block mb-1">Alamat</span>
+        <span>${lem.alamat || '-'}</span>
+      </div>
+      ${lem.dokumen_url ? `<div class="border-b pb-2"><span class="text-slate-500 block mb-1">Dokumen</span><a href="${lem.dokumen_url}" target="_blank" class="text-purple-600 underline font-bold">📎 Lihat Dokumen</a></div>` : ''}
+      ${tahapHtml}
+      <div class="mt-2"><p class="font-bold text-slate-700 mb-1">Admin Lembaga:</p>
+        ${d.admin_lembaga.length > 0 ? d.admin_lembaga.map(a => `<div class="flex justify-between text-[10px] py-1"><span>👤 ${a.nama_lengkap || a.user_id}</span><span class="text-slate-500">${a.status}</span></div>`).join('') : '<p class="text-[10px] text-slate-400">Belum ada admin terdaftar</p>'}
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = '<p class="text-rose-600">❌ ' + e.message + '</p>';
+  }
+}
+
+function tutupDetailAdmin() {
+  document.getElementById('admin-detail-box').style.display = 'none';
+  currentLembagaId = null;
+}
+
+async function submitVerifikasiTahap() {
+  if (!currentLembagaId) return;
+  const tahap = document.getElementById('admin-verif-tahap').value;
+  const status = document.getElementById('admin-verif-status').value;
+  const catatan = document.getElementById('admin-verif-catatan').value.trim();
+
+  try {
+    const r = await fetch('/api/admin/lembaga/' + currentLembagaId + '/verifikasi-tahap', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId, tahap: tahap, status: status, catatan: catatan})
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Tahap ' + tahap + ' dicatat sebagai ' + status);
+      bukaDetailAdmin(currentLembagaId);
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+async function aktifkanLembaga() {
+  if (!currentLembagaId) return;
+  if (!confirm('⚠️ Aktifkan lembaga ini? Pastikan semua tahap verifikasi sudah lolos.')) return;
+
+  try {
+    const r = await fetch('/api/admin/lembaga/' + currentLembagaId + '/aktifkan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId})
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Lembaga diaktifkan!\nKode Verifikasi: ' + d.kode_verifikasi);
+      tutupDetailAdmin();
+      muatDaftarPengajuan();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+async function suspendLembaga() {
+  if (!currentLembagaId) return;
+  const alasan = prompt('Alasan suspend lembaga ini:');
+  if (!alasan) return;
+
+  try {
+    const r = await fetch('/api/admin/lembaga/' + currentLembagaId + '/suspend', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId, alasan: alasan})
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Lembaga disuspend');
+      tutupDetailAdmin();
+      muatDaftarPengajuan();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+// =====================================================================
+// KELOLA REKENING LEMBAGA (Admin Lembaga)
+// =====================================================================
+async function muatRekeningAdmin() {
+  const listEl = document.getElementById('rekening-list-admin');
+  if (!listEl || !currentLembagaId) return;
+  listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/lembaga/' + currentLembagaId + '/rekening/semua?user_id=' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + (d.message || 'Gagal') + '</p>';
+      return;
+    }
+
+    if (!d.rekening || d.rekening.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2">Belum ada rekening. Tambah satu.</p>';
+      return;
+    }
+
+    listEl.innerHTML = d.rekening.map(r => `
+      <div class="bg-white border ${r.aktif ? 'border-slate-200' : 'border-slate-300 opacity-60'} rounded-xl p-3 space-y-1">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">${r.nama_bank || '-'}</p>
+            <p class="text-sm font-black text-slate-800">${r.nomor_rekening || '-'}</p>
+            <p class="text-[10px] text-slate-500">a.n. ${r.atas_nama || '-'}</p>
+            ${r.is_default ? '<span class="inline-block bg-amber-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full mt-1">DEFAULT</span>' : ''}
+            ${!r.aktif ? '<span class="inline-block bg-slate-400 text-white text-[8px] font-bold px-2 py-0.5 rounded-full mt-1">NONAKTIF</span>' : ''}
+          </div>
+          <div class="flex flex-col gap-1">
+            <button onclick="editRekening(${r.id})" class="text-[9px] bg-blue-500 text-white px-2 py-1 rounded font-bold">✏️ Edit</button>
+            <button onclick="hapusRekening(${r.id})" class="text-[9px] bg-rose-500 text-white px-2 py-1 rounded font-bold">🗑 Hapus</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + e.message + '</p>';
+  }
+}
+
+function bukaFormTambahRekening() {
+  document.getElementById('form-rekening-title').innerText = 'Tambah Rekening Baru';
+  document.getElementById('rek-id-edit').value = '';
+  document.getElementById('rek-nama-bank').value = '';
+  document.getElementById('rek-nomor').value = '';
+  document.getElementById('rek-atas-nama').value = '';
+  document.getElementById('form-rekening-box').style.display = 'block';
+}
+
+function tutupFormRekening() {
+  document.getElementById('form-rekening-box').style.display = 'none';
+}
+
+function editRekening(rekId) {
+  fetch('/api/lembaga/' + currentLembagaId + '/rekening/semua?user_id=' + userId)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'success') return;
+      const r = (d.rekening || []).find(x => x.id === rekId);
+      if (!r) return;
+      document.getElementById('form-rekening-title').innerText = 'Edit Rekening';
+      document.getElementById('rek-id-edit').value = r.id;
+      document.getElementById('rek-nama-bank').value = r.nama_bank || '';
+      document.getElementById('rek-nomor').value = r.nomor_rekening || '';
+      document.getElementById('rek-atas-nama').value = r.atas_nama || '';
+      document.getElementById('form-rekening-box').style.display = 'block';
+    });
+}
+
+async function simpanRekening() {
+  const rekId = document.getElementById('rek-id-edit').value;
+  const nama_bank = document.getElementById('rek-nama-bank').value.trim();
+  const nomor = document.getElementById('rek-nomor').value.trim();
+  const atas = document.getElementById('rek-atas-nama').value.trim();
+
+  if (!nama_bank || !nomor || !atas) {
+    alert('⚠️ Mohon isi semua field.');
+    return;
+  }
+
+  const payload = { user_id: userId, nama_bank, nomor_rekening: nomor, atas_nama: atas, metode: 'bank_transfer' };
+  const url = rekId
+    ? '/api/lembaga/' + currentLembagaId + '/rekening/' + rekId
+    : '/api/lembaga/' + currentLembagaId + '/rekening';
+  const method = rekId ? 'PUT' : 'POST';
+
+  try {
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Rekening ' + (rekId ? 'diperbarui' : 'ditambahkan'));
+      tutupFormRekening();
+      muatRekeningAdmin();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+async function hapusRekening(rekId) {
+  if (!confirm('⚠️ Hapus rekening ini?')) return;
+  try {
+    const r = await fetch('/api/lembaga/' + currentLembagaId + '/rekening/' + rekId, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Rekening dihapus');
+      muatRekeningAdmin();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+
+  // =====================================================================
+  // INIT ON LOAD
+  // =====================================================================
+  window.addEventListener('DOMContentLoaded', () => {
+    hitungZakatOtomatis();
+    muatDataPusat();
+    cekStatusLembaga();
+    cekSuperAdmin();          // ← TAMBAHKAN INI
+
+    ['f-gaji','f-hadiah','f-tani','f-mewah','f-temuan','f-bmt',
+     'f-rutin','f-sekolah','f-utang','f-sedekah'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', hitungZakatOtomatis);
+    });
+
+    ['f-pengairan','f-tipe-mewah'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', hitungZakatOtomatis);
+    });
+  });
+</script>
+</body>
+</html>

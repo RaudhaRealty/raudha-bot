@@ -1,0 +1,18 @@
+Ini adalah pendekatan yang sangat mulia dan tepat. Dalam Islam, niat dan kejujuran adalah kunci diterimanya zakat. Sistem tidak boleh "menghakimi" user, tetapi harus memandu user agar merasa nyaman dan yakin bahwa apa yang mereka hitung adalah benar sesuai syariat.
+
+Untuk memfasilitasi kejujuran dan kemudahan klasifikasi, kita akan mengubah app.py dan HTML_CONTENT menjadi Spiritual Dashboard yang interaktif.
+
+Berikut adalah rencana implementasinya:
+
+1. Struktur Database Baru (Otomatis)
+Kita akan menambahkan tabel baru yang akan dibuat otomatis saat app.py pertama kali dijalankan. Tabel ini akan mencatat riwayat transaksi per kategori, bukan hanya saldo akhir.
+
+2. Antarmuka Pengguna (UI) yang Memandu
+Di Mini App, kita tidak lagi hanya menampilkan satu kolom input. Kita akan menampilkan Kartu-Kartu Input berdasarkan kategori harta. User hanya perlu memasukkan angka, sistem yang menghitung.
+
+🛠️ Kode Update: app.py
+Silakan ganti seluruh isi app.py Anda dengan kode berikut. Kode ini sudah mencakup:
+
+Database baru: sumber_pendapatan, aset_tetap, riwayat_zakat.
+API baru: Untuk menyimpan input klasifikasi harta.
+UI Baru: Halaman dashboard dengan input yang terklasifikasi.

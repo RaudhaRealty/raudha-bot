@@ -1,0 +1,64 @@
+Form Raudha Spiritual Accountant sudah berhasil memunculkan tombol popu kirim laporan zakat (Rp.  angka nominal   ) ini luar biasa. tetapi Laporan dari amil ataau LAZIZ yang dilampiri nomer rekening Bank atau Dompet DANA misalnya belum muncul. Selain itu, form Raudha Spiritual Accountant adalah halaman awal dari pengembangan lebih lanjut, misalnya rincian pemasukan, dari gaji, honor,  jual hasil pertanian, ternak, harta karun atau bonus atau hadiah dan lainnya, untuk mengklasifikasi dalam penentuan zakat nantinya, Nantinya harta yang layakdizakati atau Khumus juha perlu didokumentasikan dalam klasifikasi aset atau kepemilikan untuk menentukan zakatnya, misalnya punya barang mewah Jam Rolex, ini dapat dikategorikan perhiasan sekelas emas, begitu juga yang lainnya 
+Alhamdulillah! 🌸 Senang mendengar tombol "KIRI LAPORAN ZAKAT" sudah muncul dan berfungsi. Ini adalah bukti bahwa logika JavaScript, koneksi Telegram Web App, dan backend Flask sudah berjalan harmonis.
+
+Tentang rencana pengembangan Raudha Spiritual Accountant menjadi lebih mendalam (klasifikasi aset, rincian pemasukan, dan harta mewah seperti Rolex), ini adalah langkah yang sangat tepat dan penting untuk akurasi zakat.
+
+Berikut adalah Roadmap Pengembangan berdasarkan permintaan Anda:
+
+1. Struktur Database Baru: Klasifikasi Harta
+Untuk mendukung rincian pemasukan dan jenis harta, kita perlu memperluas database keuangan_privat.db.
+
+Tabel Baru yang Disarankan:
+
+sumber_pendapatan
+Mengklasifikasi: Gaji, Honor, Pertanian, Ternak, Bonus, Hadiah, dll.
+aset_tetap
+Menyimpan harta tidak likuid: Rumah, Tanah, Jam Rolex, Perhiasan, Kendaraan.
+utang_piutang
+Mencatat utang kepada orang lain (piutang) dan utang bank (pengurang zakat).
+2. Fitur "Harta Mewah" (Jam Rolex, dll.)
+Anda benar, harta mewah yang menganggur (tidak untuk diperdagangkan atau digunakan sehari-hari) sering kali diperdebatkan.
+
+Pendapat A (Mayoritas): Jika berupa emas/perak, wajib zakat. Jika berupa barang lain (rolex, mobil mewah) dan nilainya setara emas, banyak ulama kontemporer menyarankan untuk dizakati jika nilainya mencapai nisab.
+Implementasi: Kita bisa tambahkan kolom jenis_harta di tabel aset. Jika jenisnya perhiasan_mewah atau barang_mewah, sistem akan menghitung 2.5% dari nilai pasar saat ini (bukan harga beli).
+3. Alur Baru di Mini App
+Alih-alih hanya input total harta, Mini App akan menjadi Dashboard Akuntansi Sederhana:
+
+Halaman Utama: Ringkasan Total Harta Likuid (Tabungan, Emas, Cash).
+Halaman Input Pemasukan:
+Pilih Sumber: [Gaji] [Usaha] [Pertanian] [Lainnya]
+Input Jumlah: [Rp ...]
+Tombol: Simpan
+Halaman Input Aset Tetap:
+Nama Harta: [Jam Rolex Submariner]
+Jenis: [Perhiasan Mewah]
+Nilai Pasar: [Rp 150.000.000]
+Status: [Menganggur / Tidak Diputar]
+Halaman Laporan Zakat (Final):
+Sistem otomatis menjumlahkan: Harta Likuid + Aset Mewah (jika wajib) - Utang.
+Menampilkan estimasi zakat akhir.
+4. Laporan ke Amil/LAZIS
+Anda menyebutkan bahwa nomor rekening bank/DANA belum muncul.
+
+Solusi: Ketika user menekan tombol "Kirim Laporan", kita tidak hanya mengirim data JSON ke bot. Bot kemudian membalas dengan Invoice Resmi atau Panduan Pembayaran.
+Contoh Balasan Bot:
+"Terima kasih atas laporan Zakat Anda sebesar Rp 2.500.000. Silakan transfer ke: BCA: 123-456-7890 a.n. LAZIS Raudha DANA: 0812-3456-7890 Nomor Referensi: ZA-2026-10-001"
+
+🛠️ Langkah Implementasi Selanjutnya
+Karena ini adalah pengembangan besar, mari kita pecah menjadi langkah kecil:
+
+Langkah 1: Update Database Schema Saya akan tuliskan kode SQL untuk membuat tabel sumber_pendapatan dan aset_tetap di app.py (otomatis dibuat saat pertama kali jalan).
+
+Langkah 2: Perbaiki Form HTML/JS Menambahkan dropdown untuk memilih jenis sumber pendapatan dan form untuk input harta mewah.
+
+Langkah 3: Update Logika Zakat Memisahkan perhitungan zakat untuk:
+
+Harta Perdagangan (2.5%)
+Pertanian (5% atau 10% tergantung irigasi)
+Ternak (Saturasi)
+Harta Mewah (2.5% dari nilai pasar, jika dianggap setara emas)
+Apakah Anda ingin saya mulai dengan membuatkan struktur database baru (Tabel sumber_pendapatan dan aset_tetap) dan mengintegrasikannya ke dalam app.py sekarang?
+
+Atau Anda ingin fokus dulu pada fitur laporan pembayaran (nomor rekening) agar user bisa langsung bayar setelah klik tombol kirim?
+
+Silakan pilih arah pengembangan mana yang ingin kita kerjakan terlebih dahulu. 🌸

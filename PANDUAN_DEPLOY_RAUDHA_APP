@@ -1,0 +1,22 @@
+# Panduan Deploy Bot Raudha (PC Rumahan)
+
+## Prasyarat
+- Python 3.x terinstall
+- Virtual Environment aktif: `venv\Scripts\activate`
+- File .env berisi BOT_TOKEN dan NISAB_ZAKAT
+
+## Cara Menjalankan
+1. Buka CMD 1: `python bot.py`
+2. Buka CMD 2: `python app.py`
+3. Pastikan port 8000 terbuka
+
+## Cara Update URL Mini App (Ngrok)
+1. Jalankan `ngrok http 8000`
+2. Copy URL HTTPS (misal: https://xxxxx.ngrok.io)
+3. Buka @BotFather di Telegram
+4. /mybots -> Pilih Bot Raudha -> Bot Settings -> Menu Button -> Configure Menu Button URL
+5. Paste URL Ngrok -> Save
+
+## Catatan
+- URL Ngrok berubah setiap kali restart.
+- PC harus tetap nyala agar bot berjalan.

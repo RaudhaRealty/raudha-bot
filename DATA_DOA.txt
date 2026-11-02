@@ -1,0 +1,32 @@
+# Data Doa per Lembar (Arab, Latin, Terjemah)
+# Anda bisa menambah halaman sebanyak yang Anda mau [0, 1, 2, dst]
+DATA_DOA = {
+    "kumail": [
+        {
+            "arab": "اَللَّهُمَّ إِنِّي أَسْأَلُكَ بِرَحْمَتِكَ الَّتِي وَسِعَتْ كُلَّ شَيْءٍ",
+            "latin": "Allahumma inni as'aluka bi rahmatikal-lati wasi'at kulla syay'",
+            "arti": "Ya Allah, aku memohon kepada-Mu dengan rahmat-Mu yang meliputi segala sesuatu."
+        },
+        {
+            "arab": "وَبِقُوَّتِكَ الَّتِي قَهَرْتَ بِهَا كُلَّ شَيْءٍ",
+            "latin": "Wa biquwwatikal-lati qaharta biha kulla syay'",
+            "arti": "Dan dengan kekuatan-Mu yang dengannya Engkau menaklukkan segala sesuatu."
+        }
+        # Tambahkan lembar berikutnya di sini dengan format yang sama
+    ],
+    "nudbah": [
+        {
+            "arab": "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",
+            "latin": "Alhamdu lillahi rabbil 'alamin",
+            "arti": "Segala puji bagi Allah, Tuhan semesta alam."
+        }
+        # Tambahkan lembar doa Nudbah berikutnya di sini
+    ]
+}
+
+# Ukuran Font Default (Bisa disesuaikan menggunakan emoji atau spasi sebagai variasi visual)
+UKURAN_FONT = {
+    "kecil": {"nama": "🔎 Kecil", "arab_size": "", "pembatas": "▫️▫️▫️"},
+    "sedang": {"nama": "🔍 Sedang", "arab_size": "", "pembatas": "◽◽◽"},
+    "besar": {"nama": "🌟 Besar", "arab_size": "", "pembatas": "✨✨✨"}
+}

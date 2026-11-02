@@ -1,17 +1,22 @@
+# CONTOH BAGIAN ATAS FILE BOT27.PY ANDA YANG SUDAH RAPI:
 import logging
 import urllib.parse
 import os
+import json  # Pastikan json juga sudah di-import di atas
 
 import requests
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+# TAMBAHKAN WebAppInfo di dalam tanda kurung import telegram berikut:
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     ContextTypes, MessageHandler, filters
 )
 
-from data_doa import UKURAN_FONT
-from modul_sholat import cari_kota, cari_kota_fuzzy, ambil_jadwal_sholat, format_jadwal, masjid_terdekat
-from modul_database import simpan_lokasi_user, ambil_lokasi_user, hitung_jarak
+# Definisikan URL PythonAnywhere Anda secara permanen di sini
+
+MINI_APP_URL = "https://brush-.....ly.ngrok-free.dev"
+
+#MINI_APP_URL = "https://pythonanywhere.com"
 
 # ==================== 1. KONFIGURASI ====================
 
@@ -21,7 +26,7 @@ logging.basicConfig(
 )
 
 # GANTI DENGAN TOKEN DARI @BotFather
-TOKEN = "8326864946:AAFPpe09-tX_grkWDk-P5zPYD2rNLFGxvg4"
+TOKEN = "8....................4"
 
 FOLDER_DOA = "data_doa"
 
@@ -165,12 +170,22 @@ async def tampilkan_arab_saja(query, nama_doa, halaman_ke):
     await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
 
 # ==================== 3. MENU UTAMA (/start) ====================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    
+    # 1. PESAN TEKS UTAMA
     text = (
-        "👋 **Salam dan Selamat datang di Bot Raudha**\n\n"
-        "Silakan pilih layanan di bawah ini untuk memulai:"
+        "👋 **Salam dan Selamat Datang di Bot Raudha - Recreate All The New Day: "
+        "Mari bersama mengkreasi kebaikan setiap hari baru**\n\n"
+        "Silakan gunakan tombol interaktif di bawah ini untuk mengakses layanan kami:"
     )
+    
+    # 2. STRUKTUR KEYBOARD GABUNGAN (Mini App berada di baris paling atas)
     keyboard = [
+        [
+            InlineKeyboardButton("🚀 Buka Raudha Mini App", web_app=WebAppInfo(url=MINI_APP_URL))
+        ],
         [
             InlineKeyboardButton("🌅 Morning", callback_data="menu_morning"),
             InlineKeyboardButton("🤲 Doa", callback_data="menu_doa")
@@ -181,19 +196,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             InlineKeyboardButton("🕌 Sholat", callback_data="menu_sholat"),
-            InlineKeyboardButton("🔔 Subscribe", callback_data="menu_subscribe")
+            InlineKeyboardButton("💰 Ekonomi Ummat", callback_data="menu_ekonomi")
         ],
         [
-            InlineKeyboardButton("❓ Help", callback_data="menu_help"),
+            InlineKeyboardButton("❓ Help & Subscribe", callback_data="menu_help"),
             InlineKeyboardButton("ℹ️ About", callback_data="menu_about")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.message:
+    # 3. LOGIKA PENGIRIMAN PESAN YANG AMAN (Dipanggil via teks maupun tombol back)
+    if query:
+        await query.answer()
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    else:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
-    elif update.callback_query:
-        await update.callback_query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
 
 
 # ==================== 4. SUB-MENU NAVIGASI ====================
@@ -206,7 +223,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = ""
 
     if data == "menu_morning":
-        text = "🌅 **MORNING MENU - RAUDHA**\n\nAwali hari Anda dengan dzikir dan inspirasi pagi."
+        text = "🌅 **MORNING MENU - RAUDHA**\n\n Morning has broken - Awali pagi hari dengan dzikir dan inspirasi pagi."
         keyboard = [
             [InlineKeyboardButton("☀️ Dzikir Pagi Singkat", callback_data="run_dzikir_pagi")],
             [InlineKeyboardButton("📜 Inspirasi Pagi Ini", callback_data="run_inspirasi")],
@@ -216,12 +233,12 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_doa":
         text = (
             "🤲 **MENU DOA - RAUDHA**\n\n"
-            "_Berdoalah kepada-Ku, niscaya akan Aku perkenankan bagimu._\n(QS. Ghafir: 60).\n\n"
+            "_Berdoalah kepada-Ku, niscaya akan Aku ijabah/perkenankan bagimu._\n(QS. Ghafir: 60).\n\n"
             "Silakan pilih rumpun doa yang ingin Anda amalkan di bawah ini:"
         )
         keyboard = [
             [InlineKeyboardButton("🏡 Doa Harian Penting", callback_data="run_doa_harian")],
-            [InlineKeyboardButton("🛡️ Doa Perlindungan", callback_data="run_doa_lindung")],
+            [InlineKeyboardButton("🛡️ Doa Perlindungan Diri", callback_data="run_doa_lindung")],
             [InlineKeyboardButton("📖 Doa Pilihan & Shalawat", callback_data="sub_doa_pilihan")],
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
@@ -246,19 +263,19 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_tanam":
         text = (
             "🌱 **MENU TANAM RAUDHA**\n\n"
-            "Selamat datang di gerakan Raudha Tanam.\n\n"
+            "Selamat datang di gerakan Raudha Tanam: Jadikan Halaman Ini Menjadi Taman - Wasiat.\n\n"
             "Silakan pilih program kontribusi di bawah ini:"
         )
         keyboard = [
-            [InlineKeyboardButton("🌳 Sedekah Pohon Jariyah", url="https://www.google.com")],
-            [InlineKeyboardButton("📖 Panduan Eko-Pesantren", url="https://www.google.com")],
+            [InlineKeyboardButton("🌳 Wakaf Produktif Tanaman", url="https://www.google.com")],
+            [InlineKeyboardButton("📖 Pesantren Alam Raudha Mar'i Mar'a", url="https://www.google.com")],
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
 
     elif data == "submenu_arsitektur":
         text = (
             "🏛️ **MENU ARSITEKTUR RAUDHA**\n\n"
-            "Selamat datang di kompilasi arsitektur dan layanan perencanaan masjid Raudha.\n\n"
+            "Selamat datang di kompilasi arsitektur Islam dan layanan perencanaan masjid Raudha.\n\n"
             "Silakan jelajahi karya kami:"
         )
         keyboard = [
@@ -271,7 +288,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_sholat":
         text = (
             "🕌 **MENU JADWAL SHOLAT & LOKASI**\n\n"
-            "📌 **Opsi 1 (Otomatis):** Gunakan lokasi GPS ponsel Anda.\n"
+            "📌 **Opsi 1 (Otomatis):** Gunakan lokasi GPS di ponsel Anda.\n"
             "📌 **Opsi 2 (Manual):** Cari berdasarkan nama Kota/Kabupaten."
         )
         keyboard = [
@@ -285,7 +302,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "sub_sholat_gps":
         text = (
             "📍 **PENCARIAN OTOMATIS VIA GPS**\n\n"
-            "Silakan kirim lokasi terkini Anda dengan menekan ikon klip kertas (📎) → **Location**."
+            "Silakan kirim lokasi terkini Anda dengan menekan ikon Lampiran/klip dibawah (📎) → **Location**."
         )
         keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Menu Sholat", callback_data="menu_sholat")]]
 
@@ -309,14 +326,44 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
 
-    elif data == "menu_help":
+        # --- SIMULASI SUB-MENU BARU: EKONOMI UMMAT (LAZIS & BMT) ---
+    elif data == "menu_ekonomi":
         text = (
-            "❓ **BANTUAN & PANDUAN PENGGUNAAN BOT**\n\n"
-            "1. Perintah `/start` untuk kembali ke menu utama.\n"
-            "2. Gunakan `/kota [Nama Kota]` untuk jadwal sholat manual.\n\n"
-            "Hubungi admin jika bot mengalami hambatan:"
+            "💰 **MENU EKONOMI UMMAT (LAZIS & BMT)**\n\n"
+            "Wacana layanan pemberdayaan ekonomi berbasis komunitas dan jama'ah Masjid Raudha.\n\n"
+            "✨ *Fitur yang dikembangkan di dalam menu ini*:\n"
+            "🕌 **LAZIS Raudha:** Penggalangan Zakat, Infaq, Sedekah digital via QRIS, dan Pelaporan Rutin pada Ummat.\n"
+            "🏦 **BMT Raudha:** Sarana Keuangan Mikro, Tabungan Syariah (Mudharabah), dan Pembiayaan Usaha tanpa riba.\n\n"
+            "_Status saat ini: Cetak Biru (Simulasi Pengembangan)._"
         )
         keyboard = [
+            [InlineKeyboardButton("🕌 Layanan LAZIS (Wacana)", callback_data="wacana_finansial")],
+            [InlineKeyboardButton("🏦 Layanan BMT (Wacana)", callback_data="wacana_finansial")],
+            [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
+        ]
+        
+    elif data == "wacana_finansial":
+        text = (
+            "🏦 **HALAMAN SIMULASI FINANSIAL**\n\n"
+            "Fungsi tombol ini nantinya akan dikoneksikan ke gerbang pembayaran digital (Smart Payment Gateway) "
+            "untuk membaca QRIS otomatis atau kirim formulir digital pengajuan modal BMT.\n\n"
+            "Terima kasih atas masukan berharga Anda untuk pengembangan pilar Ekonomi Umat bersama Raudha."
+        )
+        keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Menu Ekonomi", callback_data="menu_ekonomi")]]
+
+    elif data == "menu_help":
+        text = (
+            "❓ **BANTUAN, PANDUAN & LANGGANAN**\n\n"
+            "• Ketik `/start` untuk membuka kembali menu utama.\n"
+            "• Ketik `/kota [Nama Kota]` untuk mengecek jadwal sholat lokal.\n\n"
+            "🔔 **Layanan Langganan Notifikasi (Subscribe):**\n"
+            "Silakan pilih paket konten harian/mingguan yang ingin Anda terima otomatis langsung di chat ini:"
+        )
+        # Menampilkan tombol langganan (subscribe) terintegrasi di dalam menu help
+        keyboard = [
+            [InlineKeyboardButton("✅ Langganan Dzikir Pagi & Sore", callback_data="run_sub_dzikir")],
+            [InlineKeyboardButton("✅ Langganan Inspirasi Doa Mingguan", callback_data="run_sub_weekly")],
+            [InlineKeyboardButton("❌ Berhenti Berlangganan", callback_data="run_unsubscribe")],
             [InlineKeyboardButton("📞 Hubungi Admin Support", url="https://wa.me")],
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
@@ -324,11 +371,11 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_about":
         text = (
             "ℹ️ **TENTANG PLATFORM RAUDHA**\n\n"
-            "Bot Raudha adalah asisten spiritual virtual penyelarasan tiga esensi kehidupan umat:\n\n"
-            "🌱 Tanam — Dedikasi terhadap gerakan pelestarian lingkungan.\n"
-            "🏛️ Arsitektur — Perencanaan fisik rumah ibadah (masjid) yang estetis.\n"
+            "Bot Raudha adalah asisten virtual penyelarasan tiga esensi kehidupan Ummat:\n\n"
+            "🌱 Tanam — Dedikasi terhadap gerakan energi dan pelestarian alam lingkungan.\n"
+            "🏛️ Arsitektur — Perencanaan desain masjid dan fasilitas yang aman dan estetis.\n"
             "🤲 Spiritualitas — Tuntunan ibadah dan doa harian.\n\n"
-            "Raudha Foundation © 2026"
+            "Raudha Foundation - Mengkreasi Amal di setiap hari baru -  © 2026"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]]
 
@@ -646,6 +693,40 @@ async def handle_doa_actions(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup = bikin_tombol_paginasi(nama_doa, halaman_ke, total, tombol_kembali)
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
 
+# ==================== 8. HANDLER MINI APP ====================
+
+async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Mengambil data mentah dari Web App
+    raw_data = update.message.web_app_data.data
+    data = json.loads(raw_data)
+    
+    jenis_layanan = data.get('layanan')
+    
+    if jenis_layanan == 'LAZIS':
+        nominal = int(data.get('nominal', 0))
+        respon = (
+            f"🟢 *[LAZIS Raudha] - Data Zakat Diterima*\n\n"
+            f"Nominal Wajib Zakat: *Rp {nominal:,}*\n\n"
+            f"Silakan lakukan transfer ke rekening resmi LAZIS Raudha:\n"
+            f"🏦 *Bank Syariah Indonesia (BSI)*\n"
+            f"🔢 No. Rekening: *7700xxxxxx*\n"
+            f"👤 Atas Nama: *LAZIS Raudha Peduli*\n\n"
+            f"Ketik /konfirmasi setelah Anda melakukan transfer."
+        )
+    elif jenis_layanan == 'Arsitektur':
+        tipe = data.get('tipe')
+        luas = data.get('luas')
+        respon = (
+            f"📐 *[Arsitektur Raudha] - Pengajuan Diterima*\n\n"
+            f"• Tipe Bangunan: *{tipe}*\n"
+            f"• Estimasi Luas: *{luas} m²*\n\n"
+            f"Terima kasih. Tim arsitek kami akan segera meninjau berkas awal Anda dan menghubungi Anda via ruang obrolan Telegram ini."
+        )
+    else:
+        respon = "⚠️ Layanan tidak dikenal atau format data salah."
+
+    await update.message.reply_text(respon, parse_mode="Markdown")
+
 
 # ==================== 8. HANDLER SUBSCRIBE ====================
 
@@ -682,35 +763,36 @@ def main():
     app.add_handler(CommandHandler("kota", handle_command_kota))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location_received))
 
+    # 📌 TAMBAHKAN BARIS INI DI SINI:
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
+
     # 2. Callback
-    
+
     app.add_handler(CallbackQueryHandler(start, pattern="^back_to_main$"))
-
-    # 3. Submenu (HARUS DI ATAS handler kota_)
-
+    
+    # ... sisa kode registrasi callback Anda ke bawah tetap sama ...
+    
+        # 3. Submenu (HARUS DI ATAS handler kota_)
     submenu_patterns = (
         "^(menu_morning|menu_doa|menu_tanam|submenu_arsitektur|"
-        "menu_sholat|menu_subscribe|menu_help|menu_about|"
+        "menu_sholat|menu_ekonomi|menu_help|menu_about|"  # <-- "menu_subscribe" diganti "menu_ekonomi"
         "sub_sholat_gps|sub_sholat_kota|sub_doa_pilihan)$"
     )
     app.add_handler(CallbackQueryHandler(handle_submenus, pattern=submenu_patterns))
 
     # 4. Kota populer (BARU)
-    
     app.add_handler(CallbackQueryHandler(handle_kota_callback, pattern="^kota_[a-z_]+$"))
 
     morning_patterns = "^(run_dzikir_pagi|run_inspirasi)$"
     app.add_handler(CallbackQueryHandler(handle_morning_actions, pattern=morning_patterns))
 
-    subscribe_patterns = "^(run_sub_dzikir|run_sub_weekly|run_unsubscribe)$"
-    app.add_handler(CallbackQueryHandler(handle_subscribe, pattern=subscribe_patterns))
-
+    # 📌 KARENA SUBSCRIBE SUDAH MELEBUR KE HELP, PAKET LANGGANAN KITA SATUKAN KE DOA_PATTERNS DI BAWAH:
     doa_patterns = (
-    "^(run_doa_harian|run_doa_lindung|run_doa_kumail|run_doa_ziyarah|"
-    "run_doa_nudbah|run_doa_shalawat|"
-    "kumail_hal\\d+|nudbah_hal\\d+|ziyarah_hal\\d+|shalawat_hal\\d+|"
-    "kumail_arabonly_\\d+|nudbah_arabonly_\\d+|ziyarah_arabonly_\\d+|shalawat_arabonly_\\d+)$"
-)
+        "^(run_doa_harian|run_doa_lindung|run_doa_kumail|run_doa_ziyarah|"
+        "run_doa_nudbah|run_doa_shalawat|run_sub_dzikir|run_sub_weekly|run_unsubscribe|wacana_finansial|" # <-- Ditambahkan paket sub & wacana_finansial
+        "kumail_hal\\d+|nudbah_hal\\d+|ziyarah_hal\\d+|shalawat_hal\\d+|"
+        "kumail_arabonly_\\d+|nudbah_arabonly_\\d+|ziyarah_arabonly_\\d+|shalawat_arabonly_\\d+)$"
+    )
     app.add_handler(CallbackQueryHandler(handle_doa_actions, pattern=doa_patterns))
 
     print("Bot Raudha siap digunakan...")

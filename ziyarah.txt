@@ -1,0 +1,20 @@
+[ARAB]
+السَّلَامُ عَلَيْكَ يَا وَلِيَّ اللَّهِ وَابْنَ وَلِيِّهِ
+[LATIN]
+Assalamu 'alaika ya waliyallahi wabna waliyyih
+[ARTI]
+Salam sejahtera atasmu, wahai kekasih Allah dan putra kekasih-Nya
+===
+[ARAB]
+السَّلَامُ عَلَيْكَ يَا حُجَّةَ اللَّهِ وَابْنَ حُجَّتِهِ
+[LATIN]
+Assalamu 'alaika ya hujjatallahi wabna hujjatih
+[ARTI]
+Salam sejahtera atasmu, wahai hujjah Allah dan putra hujjah-Nya
+===
+[ARAB]
+السَّلَامُ عَلَيْكَ يَا سَيِّدَ الْأَوْصِيَاءِ
+[LATIN]
+Assalamu 'alaika ya sayyidal aushiya'
+[ARTI]
+Salam sejahtera atasmu, wahai penghulu para washi (penerus Nabi)

@@ -1,0 +1,27 @@
+[ARAB]
+اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَآلِ مُحَمَّدٍ
+[LATIN]
+Allahumma shalli 'ala Muhammad wa ali Muhammad
+[ARTI]
+Ya Allah, limpahkanlah shalawat kepada Muhammad dan keluarga Muhammad
+===
+[ARAB]
+اللَّهُمَّ صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ طِبِّ الْقُلُوبِ وَدَوَائِهَا
+[LATIN]
+Allahumma shalli 'ala sayyidina Muhammad thibbil qulubi wa dawā'iha
+[ARTI]
+Ya Allah, limpahkanlah shalawat kepada penghulu kami Muhammad, obat hati dan penyembuhnya
+===
+[ARAB]
+اللَّهُمَّ صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ وَعَلَى آلِهِ وَصَحْبِهِ وَسَلِّمْ
+[LATIN]
+Allahumma shalli 'ala sayyidina Muhammad wa 'ala alihi wa shahbihi wa sallim
+[ARTI]
+Ya Allah, limpahkanlah shalawat dan salam kepada penghulu kami Muhammad, keluarganya, dan para sahabatnya
+===
+[ARAB]
+اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَآلِهِ الْأَئِمَّةِ
+[LATIN]
+Allahumma shalli 'ala Muhammad wa alihil a'immah
+[ARTI]
+Ya Allah, limpahkanlah shalawat kepada Muhammad dan para imam dari keluarganya

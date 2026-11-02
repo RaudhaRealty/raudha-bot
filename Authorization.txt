@@ -1,0 +1,5 @@
+curl -H "Authorization: Bearer rnd_Y8KgTA1c57zQCW8g6AGZl4WjTyJF" -H "Accept: application/json" https://api.render.com/v1/services
+
+curl -H "Authorization: Bearer rnd_Y8KgTA1c57zQCW8g6AGZl4WjTyJF" -H "Accept: application/json" "https://api.render.com/v1/services?limit=100"
+
+curl -H "Authorization: Bearer rnd_Y8KgTA1c57zQCW8g6AGZl4WjTyJF" -H "Accept: application/json" "https://api.render.com/v1/services?limit=100"

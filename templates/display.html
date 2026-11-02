@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jam Sholat — Raudha</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;700;900&family=Amiri:wght@700&display=swap" rel="stylesheet">
+<style>
+    html { background: #020617; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: radial-gradient(circle at top, #1e293b 0%, #020617 100%);
+        color: white;
+        min-height: 100vh; 
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow-x: hidden;
+    }
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .font-arab  { font-family: 'Amiri', serif; }
+    
+    @keyframes pulse-gold {
+        0%, 100% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
+        50%      { box-shadow: 0 0 30px rgba(251, 191, 36, 0.5); border-color: #fbbf24; }
+    }
+    .pulse-gold { animation: pulse-gold 2s infinite; }
+    
+    .clock-tick {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 2px;
+        height: 10px;
+        background: #64748b;
+        border-radius: 4px;
+    }
+    
+    .clock-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 6px solid rgba(251, 191, 36, 0.3);
+        box-shadow: 0 0 80px rgba(251, 191, 36, 0.15);
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .clock-center-dot {
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 16px; height: 16px;
+        background: #fbbf24;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 30;
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+    }
+
+    .hand {
+        position: absolute;
+        bottom: 50%;
+        left: 50%;
+        transform-origin: bottom center;
+        border-radius: 10px 10px 0 0;
+        z-index: 20;
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+    }
+    .hand-hour {
+        width: 8px; height: 25%;
+        background: linear-gradient(to top, #d97706, #fcd34d);
+    }
+    .hand-minute {
+        width: 6px; height: 35%;
+        background: linear-gradient(to top, #f59e0b, #fef08a);
+    }
+    .hand-second {
+        width: 3px; height: 40%;
+        background: #ef4444;
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+        z-index: 25;
+    }
+
+    .clock-number {
+        position: absolute;
+        font-family: 'Playfair Display', serif;
+        font-weight: 900;
+        color: #fcd34d;
+        text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    }
+</style>
+</head>
+<body class="relative">
+
+    <!-- ================= HEADER: MENU & INDIKATOR MODE ================= -->
+    <div class="absolute top-3 right-3 z-50 flex flex-col items-end gap-2">
+        {% if is_tv_mode %}
+            <span class="bg-amber-500/20 border border-amber-500/50 text-amber-300 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-lg backdrop-blur-sm">
+                📺 Mode TV Masjid
+            </span>
+        {% else %}
+            <span class="bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-lg backdrop-blur-sm">
+                📱 Mode HP User
+            </span>
+        {% endif %}
+
+        <div class="flex gap-2">
+            <button id="btn-aktifkan-suara" onclick="aktifkanSuaraManual()" class="{% if is_tv_mode %}hidden{% endif %} bg-rose-500 border border-rose-400 text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-rose-600 transition-all shadow-lg flex items-center backdrop-blur-sm animate-pulse">
+                🔊 Nyalakan Suara
+            </button>
+            
+            <!-- Tombol Menu juga membawa parameter tv agar tidak hilang -->
+            <a href="/menu{% if tv_code %}?tv={{ tv_code }}{% endif %}" class="bg-black/40 border border-amber-500/50 text-amber-300 px-4 py-3 rounded-xl text-sm font-bold hover:bg-amber-500 hover:text-black transition-all shadow-lg flex items-center backdrop-blur-sm">
+                🔙 Menu
+            </a>
+        </div>
+    </div>
+
+    <!-- ================= BAGIAN 1: JAM ANALOG ================= -->
+    <div class="flex flex-col items-center justify-center pt-16 pb-4 relative flex-1">
+        <div class="clock-container {% if is_tv_mode %} w-[300px] h-[300px] md:w-[400px] md:h-[400px] {% else %} w-[240px] h-[240px] {% endif %}">
+            <div id="clock-ticks" class="absolute inset-0 rounded-full"></div>
+            <div class="clock-center-dot"></div>
+            <div id="hour-hand" class="hand hand-hour" style="transform: translateX(-50%) rotate(0deg);"></div>
+            <div id="minute-hand" class="hand hand-minute" style="transform: translateX(-50%) rotate(0deg);"></div>
+            <div id="second-hand" class="hand hand-second" style="transform: translateX(-50%) rotate(0deg);"></div>
+
+            <div class="clock-number top-4 left-1/2 -translate-x-1/2 {% if is_tv_mode %}text-3xl md:text-4xl{% else %}text-2xl{% endif %}">12</div>
+            <div class="clock-number right-4 top-1/2 -translate-y-1/2 {% if is_tv_mode %}text-3xl md:text-4xl{% else %}text-2xl{% endif %}">3</div>
+            <div class="clock-number bottom-4 left-1/2 -translate-x-1/2 {% if is_tv_mode %}text-3xl md:text-4xl{% else %}text-2xl{% endif %}">6</div>
+            <div class="clock-number left-4 top-1/2 -translate-y-1/2 {% if is_tv_mode %}text-3xl md:text-4xl{% else %}text-2xl{% endif %}">9</div>
+
+            <div class="absolute top-[25%] left-1/2 -translate-x-1/2 font-serif font-black text-amber-500/80 tracking-widest drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] {% if is_tv_mode %}text-xl md:text-2xl{% else %}text-sm{% endif %}">
+                •Raudha
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <p class="text-xs md:text-base text-slate-300 tracking-widest uppercase font-bold">{{ tanggal_masehi }}</p>
+            <p class="text-lg md:text-xl text-amber-400 font-bold mt-1 drop-shadow-md">{{ tanggal_hijriah }}</p>
+        </div>
+    </div>
+
+    <!-- ================= BAGIAN 2: KALIGRAFI ================= -->
+    <div class="w-full flex items-center justify-center gap-4 px-6 py-2 opacity-90">
+        <div class="h-[1px] flex-1 bg-gradient-to-r from-transparent to-amber-500/60"></div>
+        <p class="font-arab text-xl md:text-3xl text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.7)] text-center">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</p>
+        <div class="h-[1px] flex-1 bg-gradient-to-l from-transparent to-amber-500/60"></div>
+    </div>
+
+    <!-- ================= BAGIAN 3: JADWAL ================= -->
+    <div class="flex flex-col justify-end pb-6 px-4 md:px-6">
+        <div class="text-center mb-4">
+            <p class="text-xs md:text-lg text-slate-300 uppercase tracking-[0.2em] md:tracking-[0.4em] font-bold">
+                <span id="status-label">Menuju</span> <span id="next-name" class="text-amber-400">{{ next_sholat_nama }}</span>
+            </p>
+            <p class="font-black text-amber-300 font-serif mt-1 drop-shadow-lg {% if is_tv_mode %} text-4xl md:text-6xl {% else %} text-5xl {% endif %}" id="countdown">--:--:--</p>
+        </div>
+
+        <div class="grid gap-2 md:gap-4 w-full mx-auto {% if is_tv_mode %} grid-cols-5 max-w-4xl {% else %} grid-cols-3 max-w-md {% endif %}">
+            {% for item in sholat_list %}
+            <div class="flex flex-col items-center justify-center p-2 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all duration-300 
+                {% if item.aktif %} bg-amber-500/20 border-amber-400 pulse-gold shadow-[0_0_20px_rgba(251,191,36,0.3)] {% else %} bg-slate-800/40 border-slate-700/50 {% endif %}" data-nama="{{ item.nama }}">
+                <p class="text-xl md:text-3xl mb-1">{{ item.icon }}</p>
+                <p class="text-[10px] md:text-sm uppercase font-bold tracking-wider {% if item.aktif %}text-amber-300{% else %}text-slate-400{% endif %}">{{ item.nama }}</p>
+                <p class="text-sm md:text-2xl font-black mt-0.5 {% if item.aktif %}text-white{% else %}text-slate-200{% endif %}">{{ item.jam }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if is_tv_mode and total_zakat_masjid > 0 %}
+        <div class="mt-4 w-full max-w-2xl mx-auto bg-emerald-900/40 border border-emerald-500/50 rounded-2xl p-3 text-center backdrop-blur-sm shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+            <p class="text-emerald-300 text-xs md:text-sm uppercase tracking-widest font-bold">Total Zakat & Infaq {{ nama_masjid_tv }}</p>
+            <p class="text-2xl md:text-3xl font-black text-emerald-400 font-serif mt-1 drop-shadow-md">
+                Rp {{ "{:,.0f}".format(total_zakat_masjid).replace(",", ".") }}
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-4 space-y-1">
+            <p class="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest font-bold">Masjid Raudha • {{ kota_nama }}</p>
+            <p class="text-[8px] md:text-[10px] text-slate-500">{{ offset_info }} • Sumber: {{ sumber_jadwal }}</p>
+        </div>
+    </div>
+
+    <audio id="audio-adzan" src="/static/beep.wav" preload="auto"></audio>
+
+    <script>
+        const audioAdzan = document.getElementById('audio-adzan');
+        let audioUnlocked = false;
+        let beepAlreadyPlayed = {};
+
+        function aktifkanSuaraManual() {
+            const btn = document.getElementById('btn-aktifkan-suara');
+            if (btn) btn.style.display = 'none'; 
+            if (!audioAdzan) return;
+            audioAdzan.play().then(() => {
+                audioAdzan.pause();
+                audioAdzan.currentTime = 0;
+                audioUnlocked = true;
+            }).catch(e => console.warn('Audio diblokir:', e));
+        }
+
+        const ticksContainer = document.getElementById('clock-ticks');
+        for (let i = 0; i < 60; i++) {
+            const tick = document.createElement('div');
+            tick.className = 'clock-tick';
+            if (i % 5 === 0) {
+                tick.style.background = '#fbbf24';
+                tick.style.width = '3px';
+                tick.style.height = '14px';
+            }
+            tick.style.transform = `translateX(-50%) rotate(${i * 6}deg)`;
+            ticksContainer.appendChild(tick);
+        }
+
+        function setTickOrigins() {
+            const container = document.querySelector('.clock-container');
+            if (!container) return;
+            const radius = container.offsetWidth / 2;
+            document.querySelectorAll('.clock-tick').forEach(tick => {
+                tick.style.transformOrigin = `50% ${radius}px`;
+            });
+        }
+        setTickOrigins();
+        window.addEventListener('resize', setTickOrigins);
+
+        const sholatTimes = [
+            {% for item in sholat_list %}
+            { nama: "{{ item.nama }}", jam: "{{ item.jam }}" },
+            {% endfor %}
+        ];
+        
+        const DURASI_IQAMAH_MENIT = 15;
+        // Trik: bungkus dengan kutip agar linter JS senang, lalu parse ke boolean
+        const IS_TV_MODE = ("{{ 'true' if is_tv_mode else 'false' }}") === "true";
+
+        function toDesimal(jamStr) {
+            if(!jamStr) return 0;
+            const parts = jamStr.split(':');
+            return parseInt(parts[0]) + (parseInt(parts[1]) / 60);
+        }
+
+        function getNextSholat(now) {
+            const jamSekarang = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+            for (const s of sholatTimes) {
+                if (jamSekarang < toDesimal(s.jam)) return s;
+            }
+            return sholatTimes[0]; 
+        }
+
+        function updateJam() {
+            const now = new Date();
+            const jam = now.getHours(); const menit = now.getMinutes(); const detik = now.getSeconds();
+            
+            document.getElementById('hour-hand').style.transform = `translateX(-50%) rotate(${(jam%12)*30 + menit*0.5}deg)`;
+            document.getElementById('minute-hand').style.transform = `translateX(-50%) rotate(${menit*6}deg)`;
+            document.getElementById('second-hand').style.transform = `translateX(-50%) rotate(${detik*6}deg)`;
+
+            const tanggalHariIni = now.toISOString().split('T')[0];
+            for (const s of sholatTimes) {
+                const [h, m] = s.jam.split(':').map(Number);
+                if (jam === h && menit === m && detik < 5) {
+                    const beepKey = `${tanggalHariIni}-${s.nama}-${s.jam}`;
+                    if (!beepAlreadyPlayed[beepKey]) {
+                        beepAlreadyPlayed[beepKey] = true;
+                        if (audioUnlocked || IS_TV_MODE) {
+                            audioAdzan.currentTime = 0;
+                            audioAdzan.play().catch(e=>console.log(e));
+                        }
+                    }
+                }
+            }
+
+            let modeIqamah = false; let sholatIqamah = null; let sisaIqamah = 0;
+            for (const s of sholatTimes) {
+                const [h, m] = s.jam.split(':').map(Number);
+                const waktuAdzan = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+                const waktuIqamahSelesai = new Date(waktuAdzan.getTime() + DURASI_IQAMAH_MENIT * 60000);
+                if (now >= waktuAdzan && now < waktuIqamahSelesai) {
+                    modeIqamah = true; sholatIqamah = s.nama; sisaIqamah = waktuIqamahSelesai - now; break;
+                }
+            }
+
+            if (modeIqamah) {
+                document.getElementById('status-label').innerText = "IQAMAH";
+                document.getElementById('status-label').classList.add('text-amber-500', 'animate-pulse');
+                document.getElementById('next-name').innerText = sholatIqamah;
+                const m = Math.floor(sisaIqamah / 60000); const s = Math.floor((sisaIqamah % 60000) / 1000);
+                document.getElementById('countdown').innerText = `00:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                document.getElementById('countdown').classList.replace('text-amber-300', 'text-emerald-400');
+            } else {
+                document.getElementById('status-label').innerText = "Menuju";
+                document.getElementById('status-label').classList.remove('text-amber-500', 'animate-pulse');
+                document.getElementById('countdown').classList.replace('text-emerald-400', 'text-amber-300');
+                const next = getNextSholat(now);
+                const target = new Date();
+                const [tJam, tMenit] = next.jam.split(':');
+                target.setHours(parseInt(tJam), parseInt(tMenit), 0, 0);
+                if (target <= now) target.setDate(target.getDate() + 1);
+                const diff = target - now;
+                const h = Math.floor(diff / 3600000); const m = Math.floor((diff % 3600000) / 60000); const s = Math.floor((diff % 60000) / 1000);
+                document.getElementById('countdown').innerText = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                document.getElementById('next-name').innerText = next.nama;
+            }
+
+            let namaAktif = modeIqamah ? sholatIqamah : getNextSholat(now).nama;
+            document.querySelectorAll('[data-nama]').forEach(el => {
+                if(el.dataset.nama === namaAktif) {
+                    el.classList.add('bg-amber-500/20', 'border-amber-400', 'pulse-gold', 'shadow-[0_0_20px_rgba(251,191,36,0.3)]');
+                    el.classList.remove('bg-slate-800/40', 'border-slate-700/50');
+                } else {
+                    el.classList.remove('bg-amber-500/20', 'border-amber-400', 'pulse-gold', 'shadow-[0_0_20px_rgba(251,191,36,0.3)]');
+                    el.classList.add('bg-slate-800/40', 'border-slate-700/50');
+                }
+            });
+        }
+
+        const GPS_CACHE_KEY = 'raudha_gps_coords';
+        function simpanGPSCache(lat, lng) { try { sessionStorage.setItem(GPS_CACHE_KEY, JSON.stringify({ lat, lng, ts: Date.now() })); } catch (e) {} }
+        function bacaGPSCache() {
+            try {
+                const raw = sessionStorage.getItem(GPS_CACHE_KEY); if (!raw) return null;
+                const d = JSON.parse(raw); if (Date.now() - d.ts > 30 * 60 * 1000) return null; return d;
+            } catch (e) { return null; }
+        }
+
+        async function terapkanJadwalDariKoordinat(lat, lng) {
+            try {
+                const r = await fetch(`/api/jadwal-sholat?lat=${lat}&lng=${lng}`);
+                const d = await r.json(); if (d.status !== 'success') return false;
+                sholatTimes.length = 0;
+                sholatTimes.push({ nama: "Subuh", jam: d.subuh }, { nama: "Zuhur", jam: d.zuhur }, { nama: "Ashar", jam: d.ashar }, { nama: "Maghrib", jam: d.maghrib }, { nama: "Isya", jam: d.isya });
+                document.querySelectorAll('[data-nama]').forEach(el => {
+                    const found = sholatTimes.find(s => s.nama === el.dataset.nama);
+                    if (found) { const jamEl = el.querySelector('p:last-child'); if (jamEl) jamEl.innerText = found.jam; }
+                });
+                const footerKota = document.querySelector('.text-slate-400.uppercase');
+                if (footerKota) footerKota.innerText = `Masjid Raudha • ${d.kota}`;
+                return true;
+            } catch (e) { return false; }
+        }
+
+        if (!IS_TV_MODE) {
+            const cached = bacaGPSCache();
+            if (cached) {
+                terapkanJadwalDariKoordinat(cached.lat, cached.lng);
+            } else if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => { simpanGPSCache(pos.coords.latitude, pos.coords.longitude); await terapkanJadwalDariKoordinat(pos.coords.latitude, pos.coords.longitude); },
+                    (err) => { console.warn('GPS ditolak:', err.message); },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+                );
+            }
+        }
+
+        setInterval(updateJam, 1000);
+        updateJam();
+
+        if (IS_TV_MODE) {
+            setTimeout(() => window.location.reload(), 15 * 60 * 1000);
+        } else {
+            setInterval(async () => {
+                const cached = bacaGPSCache();
+                if (cached) await terapkanJadwalDariKoordinat(cached.lat, cached.lng);
+            }, 15 * 60 * 1000);
+        }
+    </script>
+</body>
+</html>

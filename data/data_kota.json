@@ -1,4 +1,7 @@
 [
+  {"nama": "Makkah", "lat": 21.423663, "lng": 39.822785, "provinsi": "Makkah", "catatan": "Masjidil Haram - Makkah"}, 
+  {"nama": "Madinah", "lat": 24.467411, "lng": 39.608464, "provinsi": "Madinah", "catatan": "Masjidil Nabawi - Madinah"}, 
+  {"nama": "Jerusalem", "lat": 31.776074, "lng": 35.233205, "provinsi": "Jerusalem", "catatan": "Masjidil Quds - Palestina"},  
   {"nama": "Danakerta", "lat": -7.353458, "lng": 109.544621, "provinsi": "Jawa Tengah", "catatan": "Markas Raudha - Masjid Al Falah Raudha"},
   {"nama": "Banda Aceh", "lat": 5.52, "lng": 95.42, "provinsi": "Aceh"},
   {"nama": "Medan", "lat": 3.64, "lng": 98.88, "provinsi": "Sumatera Utara"},
@@ -98,5 +101,7 @@
   {"nama": "Tomohon", "lat": -1.33, "lng": 124.82, "provinsi": "Sulawesi Utara"},
   {"nama": "Kotamobagu", "lat": 0.73, "lng": 124.30, "provinsi": "Sulawesi Utara"},
   {"nama": "Baubau", "lat": -5.47, "lng": 122.62, "provinsi": "Sulawesi Tenggara"},
-  {"nama": "Palopo", "lat": -2.99, "lng": 120.19, "provinsi": "Sulawesi Selatan"}
+  {"nama": "Palopo", "lat": -2.99, "lng": 120.19, "provinsi": "Sulawesi Selatan"},
+  {"nama": "Abuja", "lat": 9.060675, "lng": 7.490185, "provinsi": "Abuja", "catatan": "Abuja National Mosque - Abuja"},
+  {"nama": "Putrajaya", "lat": 2.936183, "lng": 101.688771, "provinsi": "Putrajaya", "catatan": "Masjidil Putrajaya - Malaysia"}   
 ]

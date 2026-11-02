@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Streaming — Raudha</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    body { 
+        background: #011d2b; 
+        color: white; 
+        height: 100vh; 
+        margin: 0; 
+        overflow: hidden; 
+        font-family: 'Inter', sans-serif; 
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+</head>
+<body>
+
+    <!-- BAGIAN ATAS: Video (Mengambil 80% Tinggi Layar) -->
+    <div class="relative w-full" style="height: 80vh; background: black;">
+        <!-- Tombol Kembali (Di atas video, posisinya aman) -->
+        <a href="/menu{% if tv_code %}?tv={{ tv_code }}{% endif %}" class="absolute top-4 left-4 z-50 bg-black/80 border border-slate-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-amber-500 hover:text-black transition-all shadow-lg">
+            🔙 Menu
+        </a>
+
+        <!-- Iframe YouTube -->
+        <iframe 
+            class="w-full h-full"
+            src="https://www.youtube.com/embed/{{ channel.embed_id }}?autoplay=1&mute=1&rel=0" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    </div>
+
+    <!-- BAGIAN BAWAH: Navigasi Channel (Mengambil 20% Tinggi Layar) -->
+    <div class="flex-1 bg-slate-900 border-t border-slate-700 flex flex-col items-center justify-center px-4">
+        <p class="text-slate-400 text-sm mb-3 uppercase tracking-widest">Pilih Siaran Live:</p>
+        
+        <!-- Deretan Tombol Channel -->
+        <div class="flex flex-wrap justify-center gap-3 w-full max-w-5xl">
+            <a href="?ch=haram{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="px-6 py-3 rounded-xl font-bold text-lg {{ 'bg-amber-500 text-black' if active_ch == 'haram' else 'bg-slate-800 text-white hover:bg-slate-700' }} transition-all">
+                🕋 Makkah
+            </a>
+            <a href="?ch=nabawi{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="px-6 py-3 rounded-xl font-bold text-lg {{ 'bg-amber-500 text-black' if active_ch == 'nabawi' else 'bg-slate-800 text-white hover:bg-slate-700' }} transition-all">
+                🕌 Madinah
+            </a>
+            <a href="?ch=aqsa{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="px-6 py-3 rounded-xl font-bold text-lg {{ 'bg-amber-500 text-black' if active_ch == 'aqsa' else 'bg-slate-800 text-white hover:bg-slate-700' }} transition-all">
+                🕌 Al-Aqsa
+            </a>
+            <a href="?ch=raudha{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="px-6 py-3 rounded-xl font-bold text-lg {{ 'bg-amber-500 text-black' if active_ch == 'raudha' else 'bg-slate-800 text-white hover:bg-slate-700' }} transition-all">
+                📺 Raudha
+            </a>
+            <a href="?ch=lokal{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="px-6 py-3 rounded-xl font-bold text-lg {{ 'bg-amber-500 text-black' if active_ch == 'lokal' else 'bg-slate-800 text-white hover:bg-slate-700' }} transition-all">
+                🏠 Lokal
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

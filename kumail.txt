@@ -1,0 +1,41 @@
+[ARAB]
+اللَّهُمَّ إِنِّي أَسْأَلُكَ بِرَحْمَتِكَ الَّتِي وَسِعَتْ كُلَّ شَيْءٍ
+[LATIN]
+Allahumma inni as-aluka bi rahmatikal lati wasi'at kulla syai'
+[ARTI]
+Ya Allah, aku memohon kepada-Mu dengan rahmat-Mu yang meliputi segala sesuatu
+===
+[ARAB]
+أَنْ تَغْفِرَ لِي ذُنُوبِي الَّتِي لَوْ تَظَاهَرَتْ لَأَهْلَكَتْنِي
+[LATIN]
+An taghfira li dzunubiyal lati lau tazhaharat la'ahlakatni
+[ARTI]
+Agar Engkau mengampuni dosa-dosaku yang jika ditampakkan akan membinasakanku
+===
+[ARAB]
+اللَّهُمَّ اغْفِرْ لِيَ الذُّنُوبَ الَّتِي تُنْزِلُ النِّقَمَ
+[LATIN]
+Allahummaghfir liyadz dzunubal lati tunzilun niqam
+[ARTI]
+Ya Allah, ampunilah dosa-dosaku yang mendatangkan bencana
+===
+[ARAB]
+اللَّهُمَّ اغْفِرْ لِيَ الذُّنُوبَ الَّتِي تُغَيِّرُ النِّعَمَ
+[LATIN]
+Allahummaghfir liyadz dzunubal lati tughayyirun ni'am
+[ARTI]
+Ya Allah, ampunilah dosa-dosaku yang mengubah nikmat
+===
+[ARAB]
+اللَّهُمَّ اغْفِرْ لِيَ الذُّنُوبَ الَّتِي تَحْبِسُ الدُّعَاءَ
+[LATIN]
+Allahummaghfir liyadz dzunubal lati tahbisud du'a
+[ARTI]
+Ya Allah, ampunilah dosa-dosaku yang menahan terkabulnya doa
+===
+[ARAB]
+رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا
+[LATIN]
+Rabbana la tuzigh qulubana ba'da idz hadaitana
+[ARTI]
+Tuhan kami, jangan Engkau condongkan hati kami kepada kesesatan setelah Engkau beri petunjuk
