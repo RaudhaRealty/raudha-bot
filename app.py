@@ -356,9 +356,8 @@ def admin_tv_page():
 
 @app.route('/admin')
 def admin_dashboard():
-    """Halaman Dashboard Super Admin (Mini App)."""
+    """Halaman Dashboard Admin (Mini App) dengan Role Dinamis."""
     
-    # HTML Dashboard (menggunakan Tailwind)
     html = """
     <!DOCTYPE html>
     <html lang="id">
@@ -377,10 +376,10 @@ def admin_dashboard():
         <!-- HEADER -->
         <div class="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white p-4 shadow-md sticky top-0 z-50 rounded-b-3xl">
             <div class="max-w-md mx-auto flex items-center gap-3">
-                <span class="text-2xl">🖥️</span>
+                <span class="text-2xl" id="header-icon">🖥️</span>
                 <div>
                     <h1 class="text-lg font-black tracking-tight">Dashboard Admin</h1>
-                    <p class="text-[10px] text-emerald-200 uppercase tracking-wider">Raudha Super Admin</p>
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-wider" id="header-role">Memuat...</p>
                 </div>
             </div>
         </div>
@@ -388,38 +387,93 @@ def admin_dashboard():
         <!-- MAIN MENU -->
         <div class="max-w-md mx-auto p-4 space-y-4 mt-2">
             
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">📖 Manajemen Konten</h2>
+            <!-- MENU SUPER ADMIN -->
+            <div id="menu-super" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">👑 Super Admin</h2>
                 <div class="grid grid-cols-2 gap-3">
-                    <a href="/admin/artikel" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">
-                        Tulis Artikel
-                    </a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm cursor-not-allowed">
-                        Jadwal Kesehatan
-                    </a>
+                    <a href="/admin/artikel" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">Tulis Artikel</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Verifikasi Masjid</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Tugaskan Admin</a>
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">📊 Data & Verifikasi</h2>
-                <div class="space-y-3">
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-blue-50 text-blue-700 p-4 rounded-xl font-bold text-sm hover:bg-blue-100 transition">
-                        Daftar Peserta Kesehatan
-                    </a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-amber-50 text-amber-700 p-4 rounded-xl font-bold text-sm hover:bg-amber-100 transition">
-                        Verifikasi Masjid Baru
-                    </a>
+            <!-- MENU KESEHATAN -->
+            <div id="menu-kesehatan" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">🩺 Kesehatan</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/admin/artikel" class="bg-blue-50 text-blue-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-blue-100 transition">Tulis Artikel</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Buat Jadwal</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm col-span-2">Lihat Peserta RSVP</a>
+                </div>
+            </div>
+
+            <!-- MENU LAZIS -->
+            <div id="menu-lazis" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">💰 LAZIS</h2>
+                <div class="space-y-2">
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-amber-50 text-amber-700 p-4 rounded-xl font-bold text-sm">Laporan Zakat</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Verifikasi Pembayaran</a>
+                </div>
+            </div>
+
+            <!-- MENU MASJID -->
+            <div id="menu-masjid" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">🕌 Masjid</h2>
+                <div class="space-y-2">
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Pengaturan Masjid</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Buat Pengumuman</a>
                 </div>
             </div>
 
             <div class="text-center mt-8">
-                <p class="text-xs text-slate-400">Raudha Admin Panel v1.0</p>
+                <p class="text-xs text-slate-400">Raudha Admin Panel v1.1</p>
             </div>
         </div>
 
         <script>
             const tg = window.Telegram?.WebApp;
             if (tg) { tg.ready(); tg.expand(); }
+            
+            const userId = tg?.initDataUnsafe?.user?.id;
+            
+            async function loadRole() {
+                try {
+                    const res = await fetch(`/api/role/${userId}`);
+                    const data = await res.json();
+                    
+                    if (data.status === 'success') {
+                        const role = data.role;
+                        
+                        // Ganti teks header
+                        const roleTextMap = {
+                            'super_admin': 'Raudha Super Admin',
+                            'kesehatan': 'Raudha Kesehatan',
+                            'lazis': 'Raudha Lazis',
+                            'masjid': 'Raudha Masjid'
+                        };
+                        document.getElementById('header-role').innerText = roleTextMap[role] || 'Raudha Admin';
+                        
+                        // Tampilkan menu sesuai role
+                        if (role === 'super_admin') {
+                            document.getElementById('menu-super').classList.remove('hidden');
+                            document.getElementById('menu-kesehatan').classList.remove('hidden');
+                            document.getElementById('menu-lazis').classList.remove('hidden');
+                            document.getElementById('menu-masjid').classList.remove('hidden');
+                        } else if (role === 'kesehatan') {
+                            document.getElementById('menu-kesehatan').classList.remove('hidden');
+                        } else if (role === 'lazis') {
+                            document.getElementById('menu-lazis').classList.remove('hidden');
+                        } else if (role === 'masjid') {
+                            document.getElementById('menu-masjid').classList.remove('hidden');
+                        } else {
+                            document.getElementById('header-role').innerText = "Akses Ditolak";
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            loadRole();
         </script>
     </body>
     </html>
@@ -755,6 +809,7 @@ def require_telegram_auth(f):
 # =====================================================================
 # RBAC HELPER
 # =====================================================================
+
 def get_user_role(user_id):
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
     c.execute("SELECT role, status, lembaga_id FROM users_config WHERE user_id=?", (user_id,))
@@ -1172,6 +1227,32 @@ def laporan_tahunan(user_id, harga_emas):
 # =====================================================================
 # API — LAPORAN & KONFIG
 # =====================================================================
+
+@app.route('/api/role/<int:user_id>')
+def get_role(user_id):
+    """Endpoint untuk mengecek role admin dari Mini App."""
+    import sqlite3
+    from dotenv import load_dotenv
+    import os
+    
+    # Cek Super Admin dari .env
+    load_dotenv()
+    admin_id = os.getenv("ADMIN_ID")
+    if admin_id and int(admin_id) == user_id:
+        return jsonify({"status": "success", "role": "super_admin"})
+    
+    # Cek Admin Penugasan dari database
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return jsonify({"status": "success", "role": row[0]})
+    
+    return jsonify({"status": "error", "message": "Not an admin"}), 403
+
 @app.route('/api/laporan/<int:user_id>')
 @require_telegram_auth
 def api_laporan(user_id):

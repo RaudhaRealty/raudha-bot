@@ -185,6 +185,7 @@ def tugaskan_admin(user_id, masjid_id, jenis_layanan):
     conn.close()            
 
 
+
 # =====================================================================
 # HELPER: Subscription Masjid
 # =====================================================================
@@ -220,6 +221,21 @@ def simpan_subscription(user_id, masjid_id):
     conn.commit()
     conn.close()
 
+def get_user_role(user_id):
+    """Mengembalikan role admin user (super_admin, kesehatan, lazis, masjid) atau None."""
+    if is_super_admin(user_id):
+        return "super_admin"
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Cek apakah user ditugaskan di tabel admin_penugasan
+    c.execute("SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return row[0]  # 'kesehatan', 'lazis', dll
+    return None
 
 # =====================================================================
 # 8. HANDLER UTAMA MENU /start
@@ -280,9 +296,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("ℹ️ About", callback_data="menu_about")],
     ]
     
-    # KHUSUS SUPER ADMIN: Tambahkan Tombol Dashboard (SEBELUM reply_markup)
-    if is_super_admin(update.effective_user.id):
-        keyboard.append([InlineKeyboardButton("🖥️ Dashboard Admin", web_app=WebAppInfo(url=f"{MINI_APP_URL}/admin"))])
+    # TAMBAHAN: Tombol Dashboard Berdasarkan Role (Super Admin, Kesehatan, Lazis, Masjid)
+    role = get_user_role(update.effective_user.id)
+    if role:
+        # Tentukan label tombol berdasarkan role
+        label_map = {
+            "super_admin": "🖥️ Dashboard Super Admin",
+            "kesehatan": "🩺 Dashboard Kesehatan",
+            "lazis": "💰 Dashboard Lazis",
+            "masjid": "🕌 Dashboard Masjid"
+        }
+        tombol_label = label_map.get(role, "🖥️ Dashboard Admin")
+        
+        # Tambahkan tombol ke keyboard
+        keyboard.append([InlineKeyboardButton(tombol_label, web_app=WebAppInfo(url=f"{MINI_APP_URL}/admin"))])
     
     # BARU BUAT reply_markup SETELAH semua tombol ditambahkan
     reply_markup = InlineKeyboardMarkup(keyboard)
