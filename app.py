@@ -392,6 +392,8 @@ def admin_dashboard():
                 <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">👑 Super Admin</h2>
                 <div class="grid grid-cols-2 gap-3">
                     <a href="/admin/artikel" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">Tulis Artikel</a>
+                    <a href="/admin/jadwal" class="bg-blue-50 text-blue-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-blue-100 transition">Buat Jadwal</a>
+                    <a href="/admin/peserta" class="bg-slate-50 text-slate-600 p-4 rounded-xl text-center font-bold text-sm col-span-2 hover:bg-slate-100 transition">Lihat Peserta Kesehatan</a>
                     <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Verifikasi Masjid</a>
                     <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Tugaskan Admin</a>
                 </div>
@@ -402,26 +404,27 @@ def admin_dashboard():
                 <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">🩺 Kesehatan</h2>
                 <div class="grid grid-cols-2 gap-3">
                     <a href="/admin/artikel" class="bg-blue-50 text-blue-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-blue-100 transition">Tulis Artikel</a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Buat Jadwal</a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm col-span-2">Lihat Peserta RSVP</a>
+                    <a href="/admin/jadwal" class="bg-blue-50 text-blue-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-blue-100 transition">Buat Jadwal</a>
+                    <a href="/admin/peserta" class="bg-slate-50 text-slate-600 p-4 rounded-xl text-center font-bold text-sm col-span-2 hover:bg-slate-100 transition">Lihat Peserta RSVP</a>
                 </div>
             </div>
 
             <!-- MENU LAZIS -->
             <div id="menu-lazis" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                 <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">💰 LAZIS</h2>
-                <div class="space-y-2">
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-amber-50 text-amber-700 p-4 rounded-xl font-bold text-sm">Laporan Zakat</a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Verifikasi Pembayaran</a>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-amber-50 text-amber-700 p-4 rounded-xl text-center font-bold text-sm">Laporan Zakat</a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Verifikasi Pembayaran</a>
                 </div>
             </div>
 
             <!-- MENU MASJID -->
             <div id="menu-masjid" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">🕌 Masjid</h2>
-                <div class="space-y-2">
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Pengaturan Masjid</a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-slate-50 text-slate-600 p-4 rounded-xl font-bold text-sm">Buat Pengumuman</a>
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">🕌 Takmir Masjid</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/admin/profil_masjid" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">Profil Masjid</a>
+                    <a href="/admin/pengumuman" class="bg-amber-50 text-amber-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-amber-100 transition">Buat Pengumuman</a>
+                    <a href="#" onclick="alert('Fitur Kas Masjid segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm col-span-2">Laporan Kas & Infaq</a>
                 </div>
             </div>
 
@@ -443,8 +446,6 @@ def admin_dashboard():
                     
                     if (data.status === 'success') {
                         const role = data.role;
-                        
-                        // Ganti teks header
                         const roleTextMap = {
                             'super_admin': 'Raudha Super Admin',
                             'kesehatan': 'Raudha Kesehatan',
@@ -453,7 +454,6 @@ def admin_dashboard():
                         };
                         document.getElementById('header-role').innerText = roleTextMap[role] || 'Raudha Admin';
                         
-                        // Tampilkan menu sesuai role
                         if (role === 'super_admin') {
                             document.getElementById('menu-super').classList.remove('hidden');
                             document.getElementById('menu-kesehatan').classList.remove('hidden');
@@ -649,9 +649,387 @@ def admin_artikel():
     """
     return html
 
+@app.route('/admin/jadwal', methods=['GET', 'POST'])
+def admin_jadwal():
+    """Halaman untuk membuat jadwal kesehatan baru."""
+    
+    if request.method == 'POST':
+        nama = request.form.get('nama', '').strip()
+        jenis = request.form.get('jenis', 'senam')
+        tanggal = request.form.get('tanggal', '')
+        waktu = request.form.get('waktu', '')
+        lokasi = request.form.get('lokasi', '').strip()
+        kuota = int(request.form.get('kuota', 30))
+        
+        if not nama or not tanggal or not waktu or not lokasi:
+            return "Error: Field wajib tidak boleh kosong.", 400
+            
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("""INSERT INTO program_kesehatan (nama, jenis, tanggal, waktu, lokasi, kuota) 
+                         VALUES (?, ?, ?, ?, ?, ?)""", (nama, jenis, tanggal, waktu, lokasi, kuota))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            return f"Error database: {e}", 500
+        finally:
+            conn.close()
+            
+        # Tampilkan halaman sukses
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        </head>
+        <body class="bg-slate-50 flex items-center justify-center h-screen p-4 text-center">
+            <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full">
+                <div class="text-6xl mb-4">✅</div>
+                <h1 class="text-xl font-black text-slate-800 mb-2">Jadwal Dibuat!</h1>
+                <p class="text-sm text-slate-500 mb-6">Jadwal kesehatan baru berhasil ditambahkan ke sistem. Bot akan otomatis menampilkannya.</p>
+                <button onclick="window.Telegram.WebApp.close()" class="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl w-full">Kembali ke Telegram</button>
+            </div>
+        </body>
+        </html>
+        """
+
+    # Jika GET, tampilkan form
+    html = """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Buat Jadwal - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }</style>
+    </head>
+    <body class="antialiased text-slate-800 p-4 pb-10">
+        
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <a href="/admin" class="text-slate-400 hover:text-slate-800">⬅️</a>
+                <h1 class="text-lg font-black">Buat Jadwal Kesehatan</h1>
+            </div>
+
+            <form method="POST" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Program</label>
+                    <input type="text" name="nama" required placeholder="Misal: Senam Ahad" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Jenis</label>
+                        <select name="jenis" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                            <option value="senam">🏃‍♀️ Senam</option>
+                            <option value="tensi">🩺 Cek Tensi</option>
+                            <option value="konsultasi">👨‍⚕️ Konsultasi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kuota</label>
+                        <input type="number" name="kuota" value="30" required min="1" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tanggal</label>
+                        <input type="date" name="tanggal" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Waktu</label>
+                        <input type="text" name="waktu" required placeholder="Misal: 08:00 - 10:00" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Lokasi</label>
+                    <input type="text" name="lokasi" required placeholder="Misal: Aula Masjid Al Falah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition text-sm">
+                    💾 Simpan Jadwal
+                </button>
+            </form>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) { tg.ready(); tg.expand(); }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/admin/peserta')
+def admin_peserta():
+    """Halaman untuk melihat daftar peserta RSVP."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # Ambil semua program kesehatan
+    c.execute("SELECT id, nama, tanggal, jenis FROM program_kesehatan ORDER BY id DESC")
+    programs = c.fetchall()
+    
+    # Ambil semua peserta
+    c.execute("""SELECT r.nama, r.telepon, r.waktu_daftar, p.nama as program_nama 
+                 FROM rsvp_kesehatan r
+                 JOIN program_kesehatan p ON r.program_id = p.id
+                 WHERE r.status = 'terdaftar'
+                 ORDER BY r.id DESC""")
+    peserta_list = c.fetchall()
+    conn.close()
+    
+    # Susun HTML tabel peserta
+    rows_html = ""
+    if not peserta_list:
+        rows_html = "<tr><td colspan='4' class='text-center py-4 text-slate-400'>Belum ada peserta yang mendaftar.</td></tr>"
+    else:
+        for nama, telp, waktu, program in peserta_list:
+            rows_html += f"""
+            <tr class="border-b border-slate-100">
+                <td class="py-3 px-2 font-bold text-slate-800">{nama}</td>
+                <td class="py-3 px-2 text-slate-600">{telp or '-'}</td>
+                <td class="py-3 px-2 text-xs text-slate-500">{program}</td>
+            </tr>
+            """
+            
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Daftar Peserta - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>body {{ font-family: 'Inter', sans-serif; background-color: #f8fafc; }}</style>
+    </head>
+    <body class="antialiased text-slate-800 p-4 pb-10">
+        
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <a href="/admin" class="text-slate-400 hover:text-slate-800">⬅️</a>
+                <h1 class="text-lg font-black">Daftar Peserta</h1>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="py-3 px-2 font-bold">Nama</th>
+                            <th class="py-3 px-2 font-bold">WA</th>
+                            <th class="py-3 px-2 font-bold">Program</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+            </div>
+            
+            <p class="text-center text-xs text-slate-400 mt-6">Total Peserta Terdaftar: <strong>{len(peserta_list)}</strong></p>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) {{ tg.ready(); tg.expand(); }}
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/admin/profil_masjid', methods=['GET', 'POST'])
+def admin_profil_masjid():
+    """Halaman untuk mengedit profil masjid."""
+    # Catatan: Untuk sementara kita hardcode masjid ID 1 (Al Falah) 
+    # Nanti bisa diambil dari admin_penugasan user yang login
+    masjid_id = 1 
+    
+    if request.method == 'POST':
+        nama = request.form.get('nama', '').strip()
+        alamat = request.form.get('alamat', '').strip()
+        kota = request.form.get('kota', '').strip()
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("UPDATE masjid SET nama=?, alamat=?, kota=? WHERE id=?", (nama, alamat, kota, masjid_id))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            return f"Error: {e}", 500
+        finally:
+            conn.close()
+            
+        return """
+        <script>
+            alert('✅ Profil masjid berhasil diperbarui!');
+            window.location.href = '/admin';
+        </script>
+        """
+        
+    # Ambil data masjid saat ini
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT nama, alamat, kota FROM masjid WHERE id=?", (masjid_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        return "Masjid tidak ditemukan.", 404
+        
+    nama_masjid, alamat_masjid, kota_masjid = row
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Profil Masjid - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>body {{ font-family: 'Inter', sans-serif; background-color: #f8fafc; }}</style>
+    </head>
+    <body class="antialiased text-slate-800 p-4 pb-10">
+        
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <a href="/admin" class="text-slate-400 hover:text-slate-800">⬅️</a>
+                <h1 class="text-lg font-black">Profil Masjid</h1>
+            </div>
+
+            <form method="POST" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Masjid</label>
+                    <input type="text" name="nama" value="{nama_masjid or ''}" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kota / Kabupaten</label>
+                    <input type="text" name="kota" value="{kota_masjid or ''}" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alamat Lengkap</label>
+                    <textarea name="alamat" required rows="3" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">{alamat_masjid or ''}</textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition text-sm">
+                    💾 Simpan Perubahan
+                </button>
+            </form>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) {{ tg.ready(); tg.expand(); }}
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+# =====================================================================
+# ADMIN PENGUMUMAN DI TV ZAKAT
+# =====================================================================
+
+@app.route('/admin/pengumuman', methods=['GET', 'POST'])
+def admin_pengumuman():
+    """Halaman untuk membuat pengumuman masjid."""
+    
+    if request.method == 'POST':
+        judul = request.form.get('judul', '').strip()
+        isi = request.form.get('isi', '').strip()
+        
+        if not judul or not isi:
+            return "Error: Judul dan isi wajib diisi.", 400
+            
+        # Simpan ke database (kita asumsikan tabel ini sudah ada atau buat baru)
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS pengumuman_masjid (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                masjid_id INTEGER DEFAULT 1,
+                judul TEXT,
+                isi TEXT,
+                tanggal TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+            c.execute("INSERT INTO pengumuman_masjid (masjid_id, judul, isi) VALUES (1, ?, ?)", (judul, isi))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            return f"Error: {e}", 500
+        finally:
+            conn.close()
+            
+        return """
+        <script>
+            alert('✅ Pengumuman berhasil dibuat!');
+            window.location.href = '/admin';
+        </script>
+        """
+
+    html = """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Buat Pengumuman - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }</style>
+    </head>
+    <body class="antialiased text-slate-800 p-4 pb-10">
+        
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <a href="/admin" class="text-slate-400 hover:text-slate-800">⬅️</a>
+                <h1 class="text-lg font-black">Buat Pengumuman</h1>
+            </div>
+
+            <form method="POST" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Judul Pengumuman</label>
+                    <input type="text" name="judul" required placeholder="Misal: Kerja Bakti Ahad Pagi" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Isi Pengumuman</label>
+                    <textarea name="isi" required rows="5" placeholder="Tulis detail pengumuman..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition text-sm">
+                    📢 Publikasikan
+                </button>
+            </form>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) { tg.ready(); tg.expand(); }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
 # =====================================================================
 # TV ZAKAT
 # =====================================================================
+
 @app.route('/tv/zakat')
 def tv_zakat():
     """Halaman Kas & Zakat untuk TV Masjid"""
@@ -710,31 +1088,10 @@ def tv_zakat():
     </html>
     """.replace(",", ".")
 
-        
-    # Jika ada dan valid, ambil total dana (bisa dari rencana_pembayaran yang statusnya 'diverifikasi')
-    c.execute("""SELECT COALESCE(SUM(nominal), 0) FROM rencana_pembayaran 
-                 WHERE lembaga_id=? AND status='diverifikasi'""", (masjid_id,))
-    total_dana = c.fetchone()[0]
-    conn.close()
-
-    # Tampilkan Layar Zakat TV
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>Kas & Zakat - {lembaga[0]}</title><script src="https://cdn.tailwindcss.com"></script></head>
-    <body class="bg-slate-900 flex flex-col items-center justify-center h-screen text-white">
-        <div class="bg-slate-800 p-10 rounded-3xl shadow-2xl border border-slate-700 text-center w-full max-w-2xl">
-            <h1 class="text-xl text-slate-400 uppercase tracking-widest mb-2">Total Kas & Zakat Terkumpul</h1>
-            <h1 class="text-2xl font-bold text-amber-400 mb-6">{lembaga[0]}</h1>
-            <p class="text-6xl font-black text-emerald-400 mb-8">Rp {int(total_dana):,}</p>
-            <a href="/menu" class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-lg font-bold text-sm">🔙 Kembali ke Menu</a>
-        </div>
-    </body>
-    </html>
-    """.replace(",", ".")
 # =====================================================================
 # HELPERS
 # =====================================================================
+
 def format_idr(nilai):
     try:
         return "Rp {:,.0f}".format(nilai).replace(",", ".")
@@ -759,6 +1116,7 @@ def tulis_audit(c, user_id, tabel, rec_id, aksi, field="", lama="", baru="", ala
 # =====================================================================
 # TELEGRAM AUTH — VERIFIKASI INITDATA (HMAC-SHA256)
 # =====================================================================
+
 from init_data_py import validate_by_hash
 
 def verify_telegram_init_data(init_data: str) -> dict:
@@ -1085,6 +1443,7 @@ init_web_db()
 # =====================================================================
 # ENGINE HITUNG
 # =====================================================================
+
 def cek_haul_terpenuhi(user_id, tanggal_hari_ini=None):
     """
     Cek haul sejak tanggal_mulai_haul. Return dict.
@@ -1304,6 +1663,7 @@ def api_bot_tagihan(user_id):
 # =====================================================================
 # API — ONBOARDING (Batch 13)
 # =====================================================================
+
 @app.route('/api/onboarding/<int:user_id>', methods=['GET'])
 def get_onboarding_state(user_id):
     """Cek apakah user sudah selesai onboarding."""
@@ -1345,6 +1705,7 @@ def set_onboarding_selesai():
 # =====================================================================
 # API — BAHASA USER
 # =====================================================================
+
 @app.route('/api/config/bahasa/<int:user_id>', methods=['GET'])
 def get_bahasa(user_id):
     """Ambil preferensi bahasa user."""
@@ -1432,6 +1793,7 @@ def toggle_khumus():
 # =====================================================================
 # API — INPUT & EDIT JURNAL
 # =====================================================================
+
 @app.route('/api/input/syariah', methods=['POST'])
 @require_telegram_auth
 def input_syariah():
@@ -1537,6 +1899,7 @@ def api_jurnal_list(user_id):
 # =====================================================================
 # API — SUPER ADMIN
 # =====================================================================
+
 @app.route('/api/admin/lembaga/pending', methods=['GET'])
 @require_telegram_auth
 def admin_list_pending_lembaga():
@@ -1728,6 +2091,7 @@ def admin_semua_lembaga():
 # =====================================================================
 # API — DAFTAR LEMBAGA (PUBLIK)
 # =====================================================================
+
 @app.route('/api/lembaga/daftar', methods=['POST'])
 def daftar_lembaga_baru():
     data = request.json or {}
@@ -1794,6 +2158,7 @@ def daftar_lembaga_baru():
 # =====================================================================
 # API — UPLOAD DOKUMEN LEMBAGA
 # =====================================================================
+
 def _allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -1840,6 +2205,7 @@ def serve_dokumen_lembaga(filename):
 # =====================================================================
 # API — CEK STATUS PENGAJUAN LEMBAGA
 # =====================================================================
+
 @app.route('/api/lembaga/status/<int:user_id>', methods=['GET'])
 def cek_status_pengajuan(user_id):
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
@@ -1906,6 +2272,7 @@ def list_rekening_lembaga(lembaga_id):
 # =====================================================================
 # API — KELOLA REKENING LEMBAGA (Admin Lembaga & Super Admin)
 # =====================================================================
+
 def _cek_akses_lembaga(user_id, lembaga_id):
     """
     Cek apakah user berhak kelola rekening lembaga ini.
@@ -2069,6 +2436,7 @@ def semua_rekening_lembaga(lembaga_id):
 # =====================================================================
 # API — PENGATURAN TV MASJID
 # =====================================================================
+
 @app.route('/api/lembaga/<int:lembaga_id>/tv-config', methods=['GET', 'POST'])
 def tv_config_lembaga(lembaga_id):
     user_id = int(request.args.get("user_id", 0))
@@ -2149,6 +2517,7 @@ def api_agenda_lembaga(lembaga_id):
 # =====================================================================
 # PUBLIC VERIFICATION PAGE
 # =====================================================================
+
 @app.route('/verify/<kode>')
 def public_verification_page(kode):
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
@@ -2226,6 +2595,7 @@ def public_verification_page(kode):
 # =====================================================================
 # ROUTE ARSITEKTUR
 # =====================================================================
+
 @app.route('/arsitektur')
 def render_halaman_galeri_arsitektur_raudha():
     templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -2275,6 +2645,7 @@ def api_input_arsitektur():
 # =====================================================================
 # API — RENCANA PEMBAYARAN (Batch 5a)
 # =====================================================================
+
 def bisa_verifikasi(user_id, rencana_id):
     """Cek apakah user bisa verifikasi pembayaran ini."""
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
@@ -2532,6 +2903,7 @@ def check_role(user_id):
 # =====================================================================
 # API — KELOLA USER (Khusus Super Admin)
 # =====================================================================
+
 @app.route('/api/admin/users', methods=['GET'])
 @require_telegram_auth
 def admin_list_users():
@@ -2622,9 +2994,10 @@ def admin_nonaktifkan_user(target_user_id):
     finally:
         conn.close()
 
- # =====================================================================
+# =====================================================================
 # API — PUBLIC STATS (Tanpa Login)
 # =====================================================================
+
 @app.route('/api/public/stats', methods=['GET'])
 def public_stats():
     """Statistik publik — transparansi Raudha."""
@@ -2841,6 +3214,7 @@ new Chart(ctx, {
 # =====================================================================
 # API — EXPORT PDF LAPORAN ZAKAT (Batch 9)
 # =====================================================================
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -3166,6 +3540,7 @@ def export_pdf_laporan(user_id):
 # =====================================================================
 # API — TAGIHAN (Batch 6a)
 # =====================================================================
+
 @app.route('/api/tagihan/<int:user_id>', methods=['GET'])
 def list_tagihan(user_id):
     """List semua tagihan user."""
@@ -3387,6 +3762,7 @@ def summary_tagihan(user_id):
 # =====================================================================
 # PUBLIC — VERIFIKASI DOKUMEN PDF (Batch 12)
 # =====================================================================
+
 @app.route('/verify-doc/<path:nomor>')
 def verify_doc_page(nomor):
     """Halaman verifikasi dokumen PDF (publik)."""
@@ -3518,6 +3894,7 @@ def verify_doc_page(nomor):
 # =====================================================================
 # ROOT — RENDER MINI APP
 # =====================================================================
+
 @app.route('/')
 def index():
     cfg = {

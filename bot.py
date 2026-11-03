@@ -579,6 +579,7 @@ async def cmd_tugaskan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================================================================
 # 8.1. COMMAND IDTV
 # =====================================================================
+
 async def cmd_id_tv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Command /idtv — Menampilkan link TV untuk admin masjid."""
     user_id = update.effective_user.id
@@ -627,6 +628,7 @@ async def cmd_id_tv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================================================================
 # 9. SUB-MENU NAVIGATION
 # =====================================================================
+
 async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler navigasi semua sub-menu (Morning, Doa, Tanam, Arsitektur, Sholat, Ekonomi, Help, About, Wacana)."""
     query = update.callback_query
@@ -918,6 +920,7 @@ async def handle_ekonomi_actions(update: Update, context: ContextTypes.DEFAULT_T
 # =====================================================================
 # 10. HANDLER KOTA & SHOLAT (MANUAL)
 # =====================================================================
+
 PATH_DATA_KOTA = os.path.join(BASE_DIR, "data_kota.json")
 _cache_data_kota = {"mtime": None, "data": None}
 
@@ -1100,6 +1103,7 @@ async def handle_location_received(update: Update, context: ContextTypes.DEFAULT
 # =====================================================================
 # 11. HANDLER SUB-ACTION (Morning, Doa, Subscribe)
 # =====================================================================
+
 async def handle_morning_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1153,7 +1157,6 @@ async def handle_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================================================================
 # NOTIFIKASI REAL-TIME (Batch 7)
 # =====================================================================
-import sqlite3
 
 DB_PATH = os.path.join("data", "raudha.db")
 if not os.path.exists(os.path.dirname(DB_PATH)):
@@ -1370,6 +1373,7 @@ async def cek_pengajuan_lembaga_baru(context: ContextTypes.DEFAULT_TYPE):
 # =====================================================================
 # BACKUP OTOMATIS (Batch 16a)
 # =====================================================================
+
 async def backup_database(context: ContextTypes.DEFAULT_TYPE):
     """
     Backup database harian.
@@ -1483,6 +1487,7 @@ async def cmd_list_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================================================================
 # RESTORE DATABASE (Batch 16b)
 # =====================================================================
+
 restore_state = {}
 
 async def cmd_restore(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1626,6 +1631,7 @@ async def handle_restore_confirm(update: Update, context: ContextTypes.DEFAULT_T
 # =====================================================================
 # 12. HANDLER WEB_APP_DATA — ACK INSTAN + DETAIL + FORWARD ADMIN
 # =====================================================================
+
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Dipanggil saat Mini App memanggil Telegram.WebApp.sendData().
@@ -1708,6 +1714,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 # =====================================================================
 # HANDLER RAUDHA PAGI SEHAT
 # =====================================================================
+
 async def handle_pagi_sehat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1877,6 +1884,7 @@ async def handle_rsvp_telepon(update: Update, context: ContextTypes.DEFAULT_TYPE
 # =====================================================================
 # 13. RUNNER
 # =====================================================================
+
 def main():
     try:
         from modul_seed_masjid import load_seed_masjid
@@ -1982,6 +1990,7 @@ def main():
     # =====================================================================
     # NOTIFIKASI REAL-TIME + BACKUP (Batch 7 & 16a)
     # =====================================================================
+
     if app.job_queue:
         # Cek pembayaran baru setiap 30 detik
         app.job_queue.run_repeating(cek_pembayaran_baru, interval=30, first=10)
