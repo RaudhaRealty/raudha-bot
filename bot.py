@@ -1091,8 +1091,7 @@ async def handle_morning_actions(update: Update, context: ContextTypes.DEFAULT_T
             "membawa ribuan lembar kain putih bersih yang siap engkau lukis dengan tinta kebaikan.\"_ "
             "— Raudha Wasiat Pagi"
         )
-
-    keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Menu Morning", callback_data="menu_morning")]]
+    keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]]
     await safe_edit(query, teks, InlineKeyboardMarkup(keyboard))
 
 
@@ -1690,11 +1689,11 @@ async def handle_pagi_sehat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu_pagi_sehat":
         text = "🌅 **RAUDHA PAGI SEHAT**\n\nBersama Aeesha Medical Center & Takmir Masjid Al Falah.\nSilakan pilih layanan kesehatan:"
         keyboard = [
-            [InlineKeyboardButton("🏃‍♀️ Senam Ahad", callback_data="kesehatan_senam")],
+            [InlineKeyboardButton("☀️ Dzikir Pagi", callback_data="run_dzikir_pagi")],
+            [InlineKeyboardButton("🏃‍♀️ Senam Ahad Pagi", callback_data="kesehatan_senam")],
             [InlineKeyboardButton("🩺 Cek Tensi Jumat", callback_data="kesehatan_tensi")],
             [InlineKeyboardButton("👨‍⚕️ Konsultasi Dokter", callback_data="kesehatan_konsultasi")],
             [InlineKeyboardButton("📖 Artikel Kesehatan Islami", callback_data="kesehatan_artikel")],
-            [InlineKeyboardButton("☀️ Dzikir Pagi", callback_data="run_dzikir_pagi")],
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
         await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
