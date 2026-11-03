@@ -113,6 +113,30 @@ def api_jadwal_sholat():
         logger.error(f"[API JADWAL] Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/daftar_masjid', methods=['POST'])
+def api_daftar_masjid():
+    data = request.json or {}
+    nama = data.get("nama", "").strip()
+    alamat = data.get("alamat", "").strip()
+    kategori = data.get("kategori", "masjid")
+    user_id = data.get("user_id", 99999)
+
+    if not nama or not alamat:
+        return jsonify({"status": "error", "message": "Nama dan alamat wajib diisi."}), 400
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute("""INSERT INTO lembaga_amil (nama, alamat, jenis, kategori_lembaga, status, created_by) 
+                     VALUES (?, ?, 'masjid', ?, 'pending', ?)""", (nama, alamat, kategori, user_id))
+        conn.commit()
+        return jsonify({"status": "success", "message": "Pendaftaran terkirim. Menunggu verifikasi."})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
 # =====================================================================
 # DISPLAY JAM SHOLAT
 # =====================================================================
@@ -329,7 +353,180 @@ def admin_tv_page():
     """Halaman dashboard untuk mengatur TV Masjid."""
     return render_template('admin_tv.html')
 
+@app.route('/admin')
+def admin_dashboard():
+    """Halaman Dashboard Super Admin (Mini App)."""
+    
+    # HTML Dashboard (menggunakan Tailwind)
+    html = """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Dashboard Admin - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        </style>
+    </head>
+    <body class="antialiased text-slate-800 pb-10">
+        
+        <!-- HEADER -->
+        <div class="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white p-4 shadow-md sticky top-0 z-50 rounded-b-3xl">
+            <div class="max-w-md mx-auto flex items-center gap-3">
+                <span class="text-2xl">🖥️</span>
+                <div>
+                    <h1 class="text-lg font-black tracking-tight">Dashboard Admin</h1>
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-wider">Raudha Super Admin</p>
+                </div>
+            </div>
+        </div>
 
+        <!-- MAIN MENU -->
+        <div class="max-w-md mx-auto p-4 space-y-4 mt-2">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">📖 Manajemen Konten</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/admin/artikel" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">
+                        Tulis Artikel
+                    </a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm cursor-not-allowed">
+                        Jadwal Kesehatan
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">📊 Data & Verifikasi</h2>
+                <div class="space-y-3">
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-blue-50 text-blue-700 p-4 rounded-xl font-bold text-sm hover:bg-blue-100 transition">
+                        Daftar Peserta Kesehatan
+                    </a>
+                    <a href="#" onclick="alert('Fitur segera hadir!')" class="block bg-amber-50 text-amber-700 p-4 rounded-xl font-bold text-sm hover:bg-amber-100 transition">
+                        Verifikasi Masjid Baru
+                    </a>
+                </div>
+            </div>
+
+            <div class="text-center mt-8">
+                <p class="text-xs text-slate-400">Raudha Admin Panel v1.0</p>
+            </div>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) { tg.ready(); tg.expand(); }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/admin/artikel', methods=['GET', 'POST'])
+def admin_artikel():
+    """Halaman untuk menulis artikel baru."""
+    
+    if request.method == 'POST':
+        # Ambil data dari form
+        judul = request.form.get('judul', '').strip()
+        penulis = request.form.get('penulis', 'Tim Medis Aeesha').strip()
+        konten = request.form.get('konten', '').strip()
+        
+        if not judul or not konten:
+            return "Error: Judul dan konten wajib diisi.", 400
+            
+        # Buat slug (nama file) dari judul
+        import re
+        slug = re.sub(r'[^a-z0-9]+', '_', judul.lower()).strip('_')
+        filename = f"{slug}.txt"
+        
+        # Format konten sesuai standar bot
+        file_content = f"[JUDUL]\n{judul}\n\n[PENULIS]\n{penulis}\n\n[KONTEN]\n{konten}\n"
+        
+        # Simpan ke folder data_kesehatan
+        folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_kesehatan")
+        os.makedirs(folder_path, exist_ok=True) # Buat folder jika belum ada
+        file_path = os.path.join(folder_path, filename)
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(file_content)
+            
+        # Tampilkan halaman sukses
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        </head>
+        <body class="bg-slate-50 flex items-center justify-center h-screen p-4 text-center">
+            <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full">
+                <div class="text-6xl mb-4">✅</div>
+                <h1 class="text-xl font-black text-slate-800 mb-2">Artikel Tersimpan!</h1>
+                <p class="text-sm text-slate-500 mb-6">Artikel berhasil ditambahkan ke sistem. Bot akan otomatis menampilkannya.</p>
+                <button onclick="window.Telegram.WebApp.close()" class="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl w-full">Kembali ke Telegram</button>
+            </div>
+        </body>
+        </html>
+        """
+
+    # Jika GET, tampilkan form
+    html = """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Tulis Artikel - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        </style>
+    </head>
+    <body class="antialiased text-slate-800 p-4 pb-10">
+        
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <a href="/admin" class="text-slate-400 hover:text-slate-800">⬅️</a>
+                <h1 class="text-lg font-black">Tulis Artikel Baru</h1>
+            </div>
+
+            <form method="POST" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Judul Artikel</label>
+                    <input type="text" name="judul" required placeholder="Misal: Manfaat Puasa untuk Kesehatan" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Penulis</label>
+                    <input type="text" name="penulis" value="Tim Medis Aeesha" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Isi Artikel</label>
+                    <textarea name="konten" required rows="8" placeholder="Tulis isi artikel di sini..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-sm"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition text-sm">
+                    💾 Simpan & Publish
+                </button>
+            </form>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) { tg.ready(); tg.expand(); }
+        </script>
+    </body>
+    </html>
+    """
+    return html
 
 # =====================================================================
 # TV ZAKAT

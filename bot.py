@@ -158,10 +158,41 @@ async def safe_edit(query, text, reply_markup=None, parse_mode='Markdown'):
         except Exception as e2:
             logger.error(f"Gagal edit pesan: {e2}")
 
+def get_pending_lembaga():
+    """Ambil daftar lembaga/masjid yang menunggu verifikasi."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, nama, jenis, kategori_lembaga, created_by FROM lembaga_amil WHERE status='pending'")
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def verifikasi_lembaga(lembaga_id, kategori):
+    """Ubah status lembaga menjadi verified dan set kategorinya."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE lembaga_amil SET status='verified', kategori_lembaga=? WHERE id=?", (kategori, lembaga_id))
+    conn.commit()
+    conn.close()
+
+def tugaskan_admin(user_id, masjid_id, jenis_layanan):
+    """Tugaskan admin ke masjid tertentu."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""INSERT OR IGNORE INTO admin_penugasan (user_id, masjid_id, jenis_layanan, status) 
+                 VALUES (?, ?, ?, 'aktif')""", (user_id, masjid_id, jenis_layanan))
+    conn.commit()
+    conn.close()            
+
 
 # =====================================================================
 # HELPER: Subscription Masjid
 # =====================================================================
+
+def is_super_admin(user_id):
+    """Cek apakah user adalah Super Admin."""
+    return ADMIN_ID and user_id == ADMIN_ID
+
 def get_user_subscription(user_id):
     """Ambil masjid yang di-subscribe user (pertama)."""
     conn = sqlite3.connect(DB_PATH)
@@ -221,7 +252,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_reply(update.message, text, reply_markup)
         return
     
-    # ============ MENU UTAMA ============
+       # ============ MENU UTAMA ============
     url_mini_app = f"{MINI_APP_URL}?t={int(time.time())}"
     
     text = (
@@ -248,6 +279,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❓ Help & Subscribe", callback_data="menu_help"),
          InlineKeyboardButton("ℹ️ About", callback_data="menu_about")],
     ]
+    
+    # KHUSUS SUPER ADMIN: Tambahkan Tombol Dashboard (SEBELUM reply_markup)
+    if is_super_admin(update.effective_user.id):
+        keyboard.append([InlineKeyboardButton("🖥️ Dashboard Admin", web_app=WebAppInfo(url=f"{MINI_APP_URL}/admin"))])
+    
+    # BARU BUAT reply_markup SETELAH semua tombol ditambahkan
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     if query:
@@ -450,6 +487,67 @@ async def cmd_cari_masjid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append([InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")])
     
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')        
+
+async def cmd_verifikasi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_super_admin(update.effective_user.id):
+        await update.message.reply_text("❌ Hanya Super Admin.")
+        return
+
+    pending = get_pending_lembaga()
+    if not pending:
+        await update.message.reply_text("✅ Tidak ada pendaftaran baru.")
+        return
+
+    text = "⏳ **DAFTAR PENDAFTARAN BARU**\n\n"
+    keyboard = []
+    for lid, nama, jenis, kategori, created_by in pending:
+        text += f"• *{nama}*\n"
+        keyboard.append([InlineKeyboardButton(f"✅ Verifikasi {nama}", callback_data=f"approve_lembaga_{lid}")])
+    
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+
+
+async def handle_approve_lembaga(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lid = int(query.data.replace("approve_lembaga_", ""))
+    
+    keyboard = [
+        [InlineKeyboardButton("🕌 Masjid/Pondok", callback_data=f"setkat_{lid}_masjid")],
+        [InlineKeyboardButton("🩺 Klinik Kesehatan", callback_data=f"setkat_{lid}_kesehatan")],
+        [InlineKeyboardButton("💰 Lazis/BMT", callback_data=f"setkat_{lid}_lazis")]
+    ]
+    await safe_edit(query, "Pilih kategori untuk lembaga ini:", InlineKeyboardMarkup(keyboard))
+
+
+async def handle_set_kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    parts = query.data.split("_")
+    lid = int(parts[1])
+    kat = parts[2]
+    
+    verifikasi_lembaga(lid, kat)
+    await safe_edit(query, f"✅ Lembaga berhasil diverifikasi dengan kategori *{kat}*.", parse_mode='Markdown')
+
+
+async def cmd_tugaskan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_super_admin(update.effective_user.id):
+        return
+
+    if len(context.args) < 3:
+        await update.message.reply_text(
+            "⚠️ Format: `/tugaskan [user_id] [masjid_id] [layanan]`\n"
+            "Contoh: `/tugaskan 7730813004 1 kesehatan`"
+        )
+        return
+
+    target_user = int(context.args[0])
+    masjid_id = int(context.args[1])
+    layanan = context.args[2]
+    
+    tugaskan_admin(target_user, masjid_id, layanan)
+    await update.message.reply_text(f"✅ User {target_user} ditugaskan di Masjid ID {masjid_id} untuk layanan {layanan}.")
 
 # =====================================================================
 # 8.1. COMMAND IDTV
@@ -1642,19 +1740,25 @@ async def handle_pagi_sehat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif data.startswith("artikel_"):
         slug = data.replace("artikel_", "")
-        artikel = get_artikel(f"{slug}.txt")
+        artikel = get_artikel(slug) 
+        
         if not artikel:
             await safe_edit(query, "❌ Artikel tidak ditemukan.", InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="kesehatan_artikel")]]))
             return
+        
+        # Batasi panjang isi artikel agar tidak melebihi batas Telegram (4000 karakter)
+        isi_artikel = artikel['isi']
+        if len(isi_artikel) > 3500:
+            isi_artikel = isi_artikel[:3500] + "\n\n...\n_(Artikel dipotong karena batas karakter Telegram. Silakan baca versi lengkap di Mini App.)_"
         
         text = (
             f"📖 **{artikel['judul'].upper()}**\n\n"
             f"✍️ _Ditulis oleh: {artikel['penulis']}_\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"{artikel['isi']}"
+            f"{isi_artikel}"
         )
         await safe_edit(query, text, InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali ke Daftar Artikel", callback_data="kesehatan_artikel")]]))
-
+    
 async def handle_rsvp_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1768,6 +1872,7 @@ def main():
     app.add_handler(CommandHandler("kota", handle_command_kota))
     app.add_handler(CommandHandler("masuk", handle_masuk))
     app.add_handler(CommandHandler("keluar", handle_keluar))
+
     # --- MESSAGE HANDLERS ---
     app.add_handler(MessageHandler(filters.LOCATION, handle_location_received))
 
@@ -1778,6 +1883,12 @@ def main():
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
 
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.Document.ALL, handle_restore_confirm))
+
+    # Handler Super Admin
+    app.add_handler(CommandHandler("verifikasi", cmd_verifikasi))
+    app.add_handler(CommandHandler("tugaskan", cmd_tugaskan))
+    app.add_handler(CallbackQueryHandler(handle_approve_lembaga, pattern="^approve_lembaga_"))
+    app.add_handler(CallbackQueryHandler(handle_set_kategori, pattern="^setkat_"))
 
     # --- LOGGING GLOBAL (group=1, exclude web_app_data agar tidak dobel) ---
     async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
