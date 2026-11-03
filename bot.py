@@ -1746,19 +1746,31 @@ async def handle_pagi_sehat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit(query, "❌ Artikel tidak ditemukan.", InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="kesehatan_artikel")]]))
             return
         
-        # Batasi panjang isi artikel agar tidak melebihi batas Telegram (4000 karakter)
-        isi_artikel = artikel['isi']
-        if len(isi_artikel) > 3500:
-            isi_artikel = isi_artikel[:3500] + "\n\n...\n_(Artikel dipotong karena batas karakter Telegram. Silakan baca versi lengkap di Mini App.)_"
+        # Ambil 300 karakter pertama sebagai ringkasan
+        isi_ringkas = artikel['isi']
+        if len(isi_ringkas) > 300:
+            # Potong di spasi terdekat agar tidak terputus di tengah kata
+            isi_ringkas = isi_ringkas[:300].rsplit(' ', 1)[0] + "..."
         
         text = (
             f"📖 **{artikel['judul'].upper()}**\n\n"
             f"✍️ _Ditulis oleh: {artikel['penulis']}_\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"{isi_artikel}"
+            f"{isi_ringkas}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"_Ingin membaca selengkapnya?_"
         )
-        await safe_edit(query, text, InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali ke Daftar Artikel", callback_data="kesehatan_artikel")]]))
-    
+        
+        # URL ke Mini App untuk baca full
+        url_artikel = f"{MINI_APP_URL}/artikel/{slug}"
+        
+        keyboard = [
+            [InlineKeyboardButton("📖 Baca Selengkapnya di Mini App", web_app=WebAppInfo(url=url_artikel))],
+            [InlineKeyboardButton("⬅️ Kembali ke Daftar Artikel", callback_data="kesehatan_artikel")]
+        ]
+        
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))   
+
 async def handle_rsvp_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()

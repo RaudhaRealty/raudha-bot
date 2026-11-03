@@ -14,6 +14,7 @@ from urllib.parse import parse_qsl
 from functools import wraps
 import time
 from dotenv import load_dotenv
+from modul_kesehatan import get_artikel
 from modul_sholat import (
     ambil_jadwal_untuk_display,
     ke_hijriah,
@@ -419,6 +420,72 @@ def admin_dashboard():
         <script>
             const tg = window.Telegram?.WebApp;
             if (tg) { tg.ready(); tg.expand(); }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/artikel/<slug>')
+def view_artikel(slug):
+    """Halaman untuk membaca artikel lengkap di Mini App."""
+    from modul_kesehatan import get_artikel
+    artikel = get_artikel(slug)
+    
+    if not artikel:
+        return "❌ Artikel tidak ditemukan.", 404
+
+    # HTML untuk tampilan artikel
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>{artikel['judul']} - Raudha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+            body {{ font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }}
+        </style>
+    </head>
+    <body class="antialiased text-slate-800 pb-10">
+        
+        <!-- Header -->
+        <div class="bg-emerald-800 text-white p-4 shadow-md sticky top-0 z-50">
+            <div class="max-w-md mx-auto flex items-center gap-3">
+                <a href="javascript:history.back()" class="text-white opacity-80 hover:opacity-100 text-xl">⬅️</a>
+                <h1 class="text-sm font-bold truncate">Artikel Kesehatan</h1>
+            </div>
+        </div>
+
+        <!-- Konten Artikel -->
+        <div class="max-w-md mx-auto p-4 mt-2">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <h1 class="text-2xl font-black text-slate-900 leading-tight mb-2">{artikel['judul']}</h1>
+                <div class="flex items-center gap-2 mb-6 border-b pb-4">
+                    <div class="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-xs font-bold">A</div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-700">{artikel['penulis']}</p>
+                        <p class="text-[10px] text-slate-400">Kontributor Raudha</p>
+                    </div>
+                </div>
+                
+                <!-- Isi teks (menggunakan whitespace-pre-wrap agar enter/paragraf terjaga) -->
+                <div class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{artikel['isi']}</div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <button onclick="window.Telegram.WebApp.close()" class="bg-slate-200 text-slate-700 font-bold py-3 px-8 rounded-xl text-sm hover:bg-slate-300 transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+
+        <script>
+            const tg = window.Telegram?.WebApp;
+            if (tg) {{ tg.ready(); tg.expand(); }}
         </script>
     </body>
     </html>

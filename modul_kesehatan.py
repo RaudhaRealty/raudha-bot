@@ -159,7 +159,7 @@ def get_daftar_artikel():
 
 def get_artikel(filename):
     """Membaca isi lengkap artikel dengan toleransi nama file."""
-    # 1. Jika filename tidak berakhiran .txt, tambahkan
+    # 1. Pastikan filename berakhiran .txt
     if not filename.endswith('.txt'):
         filename = f"{filename}.txt"
         
@@ -167,14 +167,15 @@ def get_artikel(filename):
     
     # 2. Jika tidak ketemu, coba cari file yang mirip (case-insensitive)
     if not os.path.exists(filepath):
-        files = os.listdir(ARTIKEL_DIR)
-        for f in files:
-            if f.lower() == filename.lower():
-                filepath = os.path.join(ARTIKEL_DIR, f)
-                break
+        if os.path.exists(ARTIKEL_DIR):
+            files = os.listdir(ARTIKEL_DIR)
+            for f in files:
+                if f.lower() == filename.lower():
+                    filepath = os.path.join(ARTIKEL_DIR, f)
+                    break
                 
     if not os.path.exists(filepath):
-        print(f"❌ File tidak ditemukan: {filepath}")
+        print(f"❌ [DEBUG] File tidak ditemukan: {filepath}")
         return None
     
     with open(filepath, 'r', encoding='utf-8') as file:
