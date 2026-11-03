@@ -360,6 +360,45 @@ def laporan_tahunan(user_id, harga_emas, tahun):
     conn.close()
     return hasil
 
+# =====================================================================
+# HELPER: Masjid & Subscription
+# =====================================================================
+def get_all_masjid():
+    """Ambil semua masjid, urut Raudha dulu."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, nama, tipe_masjid, kota, alamat FROM masjid ORDER BY tipe_masjid DESC, nama ASC")
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def cari_masjid_by_kota(kota):
+    """Cari masjid berdasarkan kota, alamat, atau nama (fuzzy)."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    query = f"%{kota.lower()}%"
+    c.execute("""
+        SELECT id, nama, tipe_masjid, kota 
+        FROM masjid 
+        WHERE LOWER(kota) LIKE ? 
+           OR LOWER(alamat) LIKE ? 
+           OR LOWER(nama) LIKE ?
+        ORDER BY tipe_masjid DESC, nama ASC
+    """, (query, query, query))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_masjid_by_id(masjid_id):
+    """Ambil data masjid berdasarkan ID."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, nama, tipe_masjid, kota, alamat, lat, lng FROM masjid WHERE id=?", (masjid_id,))
+    row = c.fetchone()
+    conn.close()
+    return row
+
 if __name__ == "__main__":
     init_db()
     simpan_lokasi_user(999999, -7.353458, 109.544621, kota="Danakerta", sumber="gps")

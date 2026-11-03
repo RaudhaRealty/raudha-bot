@@ -63,7 +63,10 @@ from telegram.ext import (
 )
 
 # --- 4. IMPORT MODUL LOKAL ---
-from modul_database import init_db, simpan_lokasi_user
+from modul_database import (
+    init_db, simpan_lokasi_user,
+    get_all_masjid, cari_masjid_by_kota, get_masjid_by_id
+)
 from modul_keuangan.database import init_db_keuangan
 from modul_keuangan.kasir import handle_masuk, handle_keluar
 
@@ -236,10 +239,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🚀 Buka Aplikasi Hitung Amal & Zakat", web_app=WebAppInfo(url=url_mini_app))],
         [InlineKeyboardButton("🌅 Raudha Pagi Sehat", callback_data="menu_pagi_sehat"),
          InlineKeyboardButton("🤲 Doa", callback_data="menu_doa")],
-        [InlineKeyboardButton("🌱 Tanam", callback_data="menu_tanam"),
+        [InlineKeyboardButton("🕌 Masjid & Jaringan", callback_data="menu_masjid"),
          InlineKeyboardButton("🕌 Sholat", callback_data="menu_sholat")],
-        [InlineKeyboardButton("🏛️ Arsitektur", callback_data="menu_arsitektur"),
-         InlineKeyboardButton("💰 Ekonomi Ummat", callback_data="menu_ekonomi")],
+        [InlineKeyboardButton("🌱 Tanam", callback_data="menu_tanam"),
+         InlineKeyboardButton("🏛️ Arsitektur", callback_data="menu_arsitektur")],
+        [InlineKeyboardButton("💰 Ekonomi Ummat", callback_data="menu_ekonomi")],
         [InlineKeyboardButton("🚀 Pintasan Layanan Inti", callback_data="menu_quick_links")],
         [InlineKeyboardButton("❓ Help & Subscribe", callback_data="menu_help"),
          InlineKeyboardButton("ℹ️ About", callback_data="menu_about")],
@@ -311,6 +315,141 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ Anda sekarang mengikuti info dari **{nama}**.\n\nKetik /start untuk melihat menu.",
             InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Menu Utama", callback_data="back_to_main")]]))
         return        
+
+async def handle_masjid_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler menu Masjid & Jaringan."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    user_id = update.effective_user.id
+
+    if data == "menu_masjid":
+        # Ambil masjid acuan saat ini
+        sub = get_user_subscription(user_id)
+        nama_acuan = sub[1] if sub else "Belum memilih"
+        
+        text = (
+            f"🕌 **MASJID & JARINGAN**\n\n"
+            f"🏠 *Masjid Acuan Anda:* **{nama_acuan}**\n\n"
+            f"Silakan pilih layanan:"
+        )
+        keyboard = [
+            [InlineKeyboardButton("🔄 Ganti Masjid Acuan", callback_data="masjid_ganti")],
+            [InlineKeyboardButton("🔍 Cari Masjid Berdasarkan Kota", callback_data="masjid_cari_kota")],
+            [InlineKeyboardButton("🏛️ Daftar Masjid Raudha", callback_data="masjid_daftar_raudha")],
+            [InlineKeyboardButton("🌐 Daftar Masjid Jaringan", callback_data="masjid_daftar_jaringan")],
+            [InlineKeyboardButton("➕ Daftarkan Masjid Baru", callback_data="masjid_daftar_baru")],
+            [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
+        ]
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+
+    elif data == "masjid_ganti":
+        # Tampilkan daftar masjid untuk dipilih ulang
+        masjids = get_all_masjid()
+        if not masjids:
+            await safe_edit(query, "❌ Belum ada masjid terdaftar.", 
+                           InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")]]))
+            return
+        
+        text = "🔄 **Pilih Masjid Acuan Baru:**"
+        keyboard = []
+        for mid, nama, tipe, kota, alamat in masjids[:10]:
+            icon = "⭐" if tipe == 'raudha' else "•"
+            keyboard.append([InlineKeyboardButton(
+                f"{icon} {nama} ({kota or '-'})",
+                callback_data=f"pilih_masjid_{mid}"
+            )])
+        keyboard.append([InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")])
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+
+    elif data == "masjid_cari_kota":
+        await safe_edit(query, 
+            "🔍 **Cari Masjid Berdasarkan Kota**\n\n"
+            "Silakan ketik nama kota dengan format:\n"
+            "`/carimasjid [Nama Kota]`\n\n"
+            "Contoh: `/carimasjid Banjarnegara`",
+            InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")]]))
+
+    elif data == "masjid_daftar_raudha":
+        masjids = [m for m in get_all_masjid() if m[2] == 'raudha']
+        if not masjids:
+            await safe_edit(query, "🏛️ **Masjid Raudha**\n\nBelum ada masjid Raudha yang terdaftar.", 
+                           InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")]]))
+            return
+        
+        text = "🏛️ **DAFTAR MASJID RAUDHA**\n\n"
+        for mid, nama, tipe, kota, alamat in masjids:
+            text += f"⭐ *{nama}*\n"
+            if kota:
+                text += f"   📍 {kota}\n"
+            if alamat:
+                text += f"   🏠 {alamat}\n"
+            text += f"   [📍 Pilih Masjid Ini](https://t.me/{context.bot.username}?start=subs_{mid})\n\n"
+        
+        text += "_Klik tombol di bawah untuk memilih masjid._"
+        keyboard = []
+        for mid, nama, tipe, kota, alamat in masjids:
+            keyboard.append([InlineKeyboardButton(f"⭐ {nama}", callback_data=f"pilih_masjid_{mid}")])
+        keyboard.append([InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")])
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+
+    elif data == "masjid_daftar_jaringan":
+        masjids = [m for m in get_all_masjid() if m[2] == 'jaringan']
+        if not masjids:
+            await safe_edit(query, "🌐 **Masjid Jaringan**\n\nBelum ada masjid jaringan yang terdaftar.", 
+                           InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")]]))
+            return
+        
+        text = "🌐 **DAFTAR MASJID JARINGAN**\n\n"
+        for mid, nama, tipe, kota, alamat in masjids[:15]:
+            text += f"• *{nama}*\n"
+            if kota:
+                text += f"   📍 {kota}\n"
+        
+        keyboard = []
+        for mid, nama, tipe, kota, alamat in masjids[:10]:
+            keyboard.append([InlineKeyboardButton(f"• {nama} ({kota or '-'})", callback_data=f"pilih_masjid_{mid}")])
+        keyboard.append([InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")])
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+
+    elif data == "masjid_daftar_baru":
+        text = (
+            "➕ **DAFTARKAN MASJID BARU**\n\n"
+            "Untuk mendaftarkan masjid sebagai bagian dari jaringan Raudha, "
+            "silakan buka Mini App dan isi formulir pendaftaran.\n\n"
+            "Tim Super Admin akan memverifikasi pendaftaran Anda."
+        )
+        keyboard = [
+            [InlineKeyboardButton("🚀 Buka Mini App", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=daftar"))],
+            [InlineKeyboardButton("⬅️ Kembali", callback_data="menu_masjid")]
+        ]
+        await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+
+async def cmd_cari_masjid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command /carimasjid [nama_kota] — cari masjid berdasarkan kota."""
+    if not context.args:
+        await update.message.reply_text("⚠️ Silakan masukkan nama kota.\nContoh: `/carimasjid Banjarnegara`")
+        return
+    
+    kota = " ".join(context.args).strip()
+    masjids = cari_masjid_by_kota(kota)
+    
+    if not masjids:
+        await update.message.reply_text(f"❌ Tidak ada masjid terdaftar di kota '{kota}'.")
+        return
+    
+    text = f"🕌 **Masjid di {kota.title()}**\n\n"
+    for mid, nama, tipe, kota_m in masjids[:10]:
+        icon = "⭐" if tipe == 'raudha' else "•"
+        text += f"{icon} {nama}\n"
+    
+    keyboard = []
+    for mid, nama, tipe, kota_m in masjids[:10]:
+        icon = "⭐" if tipe == 'raudha' else "•"
+        keyboard.append([InlineKeyboardButton(f"{icon} {nama}", callback_data=f"pilih_masjid_{mid}")])
+    keyboard.append([InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")])
+    
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')        
 
 # =====================================================================
 # 8.1. COMMAND IDTV
@@ -786,7 +925,7 @@ async def handle_location_received(update: Update, context: ContextTypes.DEFAULT
         import traceback
         traceback.print_exc()
         await safe_reply(update.message, f"⚠️ Gagal mencari masjid terdekat: {e}")
-        
+
     # 2. Ambil jadwal dari API Aladhan
     try:
         timings = get_jadwal(lat, lng)
@@ -1684,6 +1823,10 @@ def main():
 
     # Handler Onboarding
     app.add_handler(CallbackQueryHandler(handle_onboarding, pattern="^(onboarding_gps|onboarding_manual|onboarding_skip|pilih_masjid_)"))  
+
+    # Handler Masjid & Jaringan
+    app.add_handler(CallbackQueryHandler(handle_masjid_menu, pattern="^(menu_masjid|masjid_ganti|masjid_cari_kota|masjid_daftar_raudha|masjid_daftar_jaringan|masjid_daftar_baru)$"))
+    app.add_handler(CommandHandler("carimasjid", cmd_cari_masjid))
 
     logger.info("✅ Bot Raudha siap digunakan...")
 
