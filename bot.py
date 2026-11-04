@@ -269,6 +269,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
        # ============ MENU UTAMA ============
+
     url_mini_app = f"{MINI_APP_URL}?ngrok-skip-browser-warning=true&t={int(time.time())}"
     text = (
         "👋 **Salam dan Selamat Datang di Raudha - Marbot yang melayani anda dalam mengkreasi kebaikan setiap hari, selaras dengan motto - Recreate All The New Day:**\n\n"
@@ -739,7 +740,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_ekonomi":
         # URL Mini App dengan parameter untuk langsung membuka tab Zakat
-        mini_app_zakat_url = f"{MINI_APP_URL}?tab=zakat&t={int(time.time())}"
+        mini_app_zakat_url = f"{MINI_APP_URL}?tab=zakat&ngrok-skip-browser-warning=true&t={int(time.time())}"
         
         text = (
             "💰 **MENU EKONOMI UMMAT (LAZIS & BMT)**\n\n"
@@ -801,9 +802,9 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Kelola listrik, air, internet, dan hutang Anda."
         )
         keyboard = [
-            [InlineKeyboardButton("💰 Buka Kalkulator Zakat", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=zakat&t={int(time.time())}"))],
-            [InlineKeyboardButton("🏛️ Daftarkan Lembaga Amil", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=daftar&t={int(time.time())}"))],
-            [InlineKeyboardButton("🧾 Buka Tagihan", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=tagihan&t={int(time.time())}"))],
+            [InlineKeyboardButton("💰 Buka Kalkulator Zakat", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=zakat&ngrok-skip-browser-warning=true&t={int(time.time())}"))],
+            [InlineKeyboardButton("🏛️ Daftarkan Lembaga Amil", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=daftar&ngrok-skip-browser-warning=true&t={int(time.time())}"))],
+            [InlineKeyboardButton("🧾 Buka Tagihan", web_app=WebAppInfo(url=f"{MINI_APP_URL}?tab=tagihan&ngrok-skip-browser-warning=true&t={int(time.time())}"))],
             [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")]
         ]
 

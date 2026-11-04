@@ -733,39 +733,68 @@
   </div>
 </div>
 
-<!-- OVERLAY SUKSES -->
-<div id="success-overlay" class="fixed inset-0 z-[9999] items-center justify-center p-5" style="display:none; background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 100%);">
-  <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden" style="animation: overlayPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
-    <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 pt-10 pb-8 px-6 text-center relative">
-      <div class="relative inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-3" style="animation: iconPop 0.5s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;">
-        <svg class="w-11 h-11 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+<!-- OVERLAY SUKSES (Kartu Kecil di Bawah) -->
+<div id="success-overlay" class="fixed bottom-6 left-4 right-4 z-[9999] flex justify-center" style="display:none;">
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-emerald-500" style="animation: overlayPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+    
+    <!-- Header Kecil -->
+    <div class="p-4 flex items-center gap-3 bg-emerald-50 border-b border-emerald-200">
+      <div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
       </div>
-      <h2 class="text-xl font-black text-white tracking-tight">Laporan Berhasil!</h2>
-      <p class="text-xs text-emerald-100 mt-1">Alhamdulillah, data tersimpan.</p>
+      <div class="flex-1">
+        <h2 class="text-sm font-black text-slate-800">Laporan Berhasil!</h2>
+        <p class="text-[11px] text-slate-500 leading-tight mt-0.5">Alhamdulillah, data tersimpan.</p>
+      </div>
     </div>
-    <div class="p-6 space-y-4">
-      <div class="bg-slate-50 rounded-2xl p-4 space-y-2.5 border border-slate-100">
-        <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-slate-500 uppercase">Zakat Maal + Tani</span><span id="overlay-zakat" class="text-sm font-black text-emerald-700">Rp 0</span></div>
+
+    <!-- Isi Notifikasi -->
+    <div class="p-4 space-y-3">
+      
+      <!-- Rincian -->
+      <div class="bg-slate-50 rounded-xl p-3 space-y-2 border border-slate-100">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-slate-500 uppercase">Zakat</span>
+          <span id="overlay-zakat" class="font-black text-emerald-700">Rp 0</span>
+        </div>
         <div class="h-px bg-slate-200"></div>
-        <div class="flex justify-between items-center"><span class="text-[11px] font-bold text-slate-500 uppercase">Khumus Pembersih</span><span id="overlay-khumus" class="text-sm font-black text-amber-600">Rp 0</span></div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-slate-500 uppercase">Khumus</span>
+          <span id="overlay-khumus" class="font-black text-amber-600">Rp 0</span>
+        </div>
       </div>
-      <div id="overlay-status-box" class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-        <div id="overlay-spinner" class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" style="display: block;"></div>
-        <div id="overlay-check" class="w-5 h-5 flex items-center justify-center flex-shrink-0" style="display: none;"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-        <p id="overlay-status" class="text-xs font-semibold text-emerald-800 leading-snug">Mengirim ke bot Telegram...</p>
+
+      <!-- Status Pengiriman -->
+      <div id="overlay-status-box" class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+        <div id="overlay-spinner" class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" style="display: block;"></div>
+        <div id="overlay-check" class="w-4 h-4 flex items-center justify-center flex-shrink-0" style="display: none;">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <p id="overlay-status" class="text-[11px] font-semibold text-emerald-800 leading-snug">Mengirim ke bot Telegram...</p>
       </div>
-      <button onclick="tutupAplikasi()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-        Tutup Aplikasi
-      </button>
-      <p class="text-[10px] text-center text-slate-600 leading-relaxed">Anda bisa menunggu balasan admin di chat Telegram<br>setelah menutup jendela ini.</p>
+
+      <!-- Tombol Aksi -->
+      <div class="flex gap-2">
+        <button onclick="document.getElementById('success-overlay').style.display='none'" class="flex-1 bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg text-xs transition hover:bg-slate-300">
+          Lihat Dashboard
+        </button>
+        <button onclick="tutupAplikasi()" class="flex-1 bg-emerald-600 text-white font-black py-2.5 rounded-lg text-xs transition hover:bg-emerald-700 flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          Tutup
+        </button>
+      </div>
+      
+      <p class="text-[9px] text-center text-slate-500 leading-relaxed">Balasan admin akan muncul di chat Telegram.</p>
     </div>
   </div>
 </div>
 
-</div>
-
-<!-- TELEGRAM SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <script>
@@ -888,6 +917,7 @@ async function downloadPDF() {
   // =====================================================================
   // KONFIGURASI
   // =====================================================================
+
   const CFG = {{ cfg|tojson }};
   const HARGA_EMAS_BASE   = CFG.harga_emas;
   const BASELINE_AWAL     = CFG.baseline_awal;
@@ -1133,70 +1163,82 @@ function switchSubTabZakat(name) {
   });
 }
 
-  // =====================================================================
+    // =====================================================================
   // MUAT DATA PUSAT
   // =====================================================================
-
   function muatDataPusat() {
+    isProcessing = true; 
     fetch('/api/laporan/' + userId)
       .then(r => r.json())
       .then(d => {
-        if (d?.status !== 'success') return;
-        const l = d.laporan;
-
-      // ✨ Update header harta dengan tanda * atau ✓
-      const totalHartaEl = document.getElementById('total-harta');
-      if (totalHartaEl && typeof l.total_pembayaran_dibayar !== 'undefined') {
-        const adaDibayar = l.total_pembayaran_dibayar > 0;
-        const adaDiverifikasi = l.total_pembayaran_diverifikasi > 0;
-        
-        if (adaDibayar) {
-          totalHartaEl.innerHTML = formatRupiah(l.total_harta) + ' <span class="text-amber-300 text-base" title="Ada pembayaran menunggu verifikasi">*</span>';
-        } else if (adaDiverifikasi) {
-          totalHartaEl.innerHTML = formatRupiah(l.total_harta) + ' <span class="text-emerald-300 text-base" title="Semua pembayaran terverifikasi">✓</span>';
-        } else {
-          totalHartaEl.innerText = formatRupiah(l.total_harta);
+        if (d?.status !== 'success') {
+            isProcessing = false;
+            return;
         }
-      }
+        const l = d.laporan;
+        console.log("ANGKA DARI SERVER:", l.total_harta, l.total_penghasilan); // <-- Tambahkan ini
 
+        // 1. UPDATE HEADER HARTA
+        const totalHartaEl = document.getElementById('total-harta');
+        if (totalHartaEl) {
+            let suffix = '';
+            if (l.total_pembayaran_dibayar > 0) {
+                suffix = ' <span class="text-amber-300 text-base">*</span>';
+            } else if (l.total_pembayaran_diverifikasi > 0) {
+                suffix = ' <span class="text-emerald-300 text-base">✓</span>';
+            }
+            totalHartaEl.innerHTML = formatRupiah(l.total_harta) + suffix;
+        }
+
+        // 2. UPDATE BMT
         const elIdr = document.getElementById('view-bmt-idr');
         const elEmas = document.getElementById('view-bmt-emas');
         if (elIdr) elIdr.innerText = formatRupiah(l.saldo_bmt_idr || 0);
         if (elEmas) elEmas.innerText = l.saldo_bmt_emas || '0.0000';
 
+        // 3. UPDATE LAPORAN DETAIL
         const lap = document.getElementById('laporan-detail');
         if (lap) lap.innerHTML = `
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;"><span>Harta Bersih:</span><strong>${formatRupiah(l.total_penghasilan)}</strong></div>
-               <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Pembayaran Dibayar:</span><strong>${formatRupiah(l.total_pembayaran_dibayar || 0)}</strong></div>
-               <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#059669;"><span>Pembayaran Diverifikasi:</span><strong>${formatRupiah(l.total_pembayaran_diverifikasi || 0)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Pembayaran Dibayar:</span><strong>${formatRupiah(l.total_pembayaran_dibayar || 0)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#059669;"><span>Pembayaran Diverifikasi:</span><strong>${formatRupiah(l.total_pembayaran_diverifikasi || 0)}</strong></div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#dc2626;"><span>Zakat Maal & Tani:</span><strong>${formatRupiah(l.total_zakat)}</strong></div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Khumus:</span><strong>${formatRupiah(l.total_khumus)}</strong></div>
           <div style="display:flex;justify-content:space-between;padding:8px 0;color:#059669;font-weight:bold;"><span>Status:</span><span>${l.zakat_penghasilan_wajib ? 'Muzakki Wajib' : 'Muzakki Baseline'}</span></div>`;
 
+        // 4. UPDATE STATUS HAUL
         const infoEl = document.getElementById('info-haul');
         const detailEl = document.getElementById('info-haul-detail');
         if (infoEl && detailEl) {
-          if (l.haul_terpenuhi) {
-            infoEl.innerText = '✅ Haul Terpenuhi';
-            infoEl.className = 'font-bold text-emerald-300';
-            detailEl.innerText = `Zakat maal wajib: ${formatRupiah(l.zakat_maal_wajib)}`;
-          } else if (l.tanggal_mulai_haul) {
-            infoEl.innerText = '⏳ Belum Haul';
-            infoEl.className = 'font-bold text-amber-300';
-            detailEl.innerText = `Sisa ${l.sisa_hari_haul} hari (mulai ${l.tanggal_mulai_haul})`;
-          } else {
-            infoEl.innerText = '🆕 Belum ada data';
-            infoEl.className = 'font-bold text-slate-600';
-            detailEl.innerText = 'Input data pertama Anda untuk mulai haul';
-          }
+            if (l.haul_terpenuhi) {
+                infoEl.innerText = '✅ Haul Terpenuhi';
+                infoEl.className = 'font-bold text-emerald-300';
+                detailEl.innerText = `Zakat maal wajib: ${formatRupiah(l.zakat_maal_wajib)}`;
+            } else if (l.tanggal_mulai_haul) {
+                infoEl.innerText = '⏳ Belum Haul';
+                infoEl.className = 'font-bold text-amber-300';
+                detailEl.innerText = `Sisa ${l.sisa_hari_haul} hari (mulai ${l.tanggal_mulai_haul})`;
+            } else {
+                infoEl.innerText = '🆕 Belum ada data';
+                infoEl.className = 'font-bold text-slate-600';
+                detailEl.innerText = 'Input data pertama Anda untuk mulai haul';
+            }
         }
 
+        // 5. UPDATE TOGGLE KHUMUS
         const toggleKhumusEl = document.getElementById('toggle-khumus');
         if (toggleKhumusEl && typeof l.khumus_aktif !== 'undefined') {
-          toggleKhumusEl.checked = l.khumus_aktif;
+            toggleKhumusEl.checked = l.khumus_aktif;
         }
+
+        // 6. BUKA KUNCI UI
+        isProcessing = false; 
+
       })
-      .catch(e => console.log('Init kosong', e));
+      .catch(e => {
+        isProcessing = false;
+        console.log('Init kosong', e);
+      });
   }
 
   // =====================================================================
@@ -1253,12 +1295,12 @@ function switchSubTabZakat(name) {
     };
     
     for (const [id, cfg] of Object.entries(limits)) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      if (parseFloat(el.value) > cfg.max) {
-        alert(`⚠️ ${cfg.label} terlalu besar (maks ${cfg.max.toLocaleString('id-ID')}).`);
-        return;
-      }
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (parseFloat(el.value) > cfg.max) {
+            alert(`⚠️ ${cfg.label} terlalu besar (maks ${cfg.max.toLocaleString('id-ID')}).`);
+            return;
+        }
     }
 
     const payload = {
@@ -1277,13 +1319,16 @@ function switchSubTabZakat(name) {
       pengeluaran_sedekah: parseFloat(document.getElementById('f-sedekah').value) || 0,
     };
 
-    const btn = document.getElementById('btn-submit');
+    const btn = document.getElementById('btn-submit-zakat') || document.getElementById('btn-submit-khumus');
     const iconEl = document.getElementById('btn-submit-icon');
     const textEl = document.getElementById('btn-submit-text');
     
     if (btn) btn.disabled = true;
     if (iconEl) iconEl.textContent = '⏳';
     if (textEl) textEl.textContent = 'Memproses...';
+
+    // ⭐ KUNCI UI
+    isProcessing = true;
 
     fetch('/api/input/syariah', {
       method: 'POST', 
@@ -1294,22 +1339,32 @@ function switchSubTabZakat(name) {
     .then(d => {
       if (d.status !== 'success') throw new Error(d.message || 'Gagal');
       
-      hitungZakatOtomatis();
-      muatDataPusat();
+      // ⭐ RESET FORM
+      ['f-gaji','f-hadiah','f-tani','f-mewah','f-temuan','f-bmt','f-rutin','f-sekolah','f-utang','f-sedekah'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = 0;
+      });
 
-      // Reset tombol
-      if (btn) btn.disabled = false;
-      if (iconEl) iconEl.textContent = '💰';
-      if (textEl) textEl.textContent = 'SETOR ZAKAT SEKARANG';
+      // ⭐ UPDATE HEADER DENGAN DATA DARI DATABASE
+      muatDataPusat().then(() => {
+          hitungZakatOtomatis();
+          
+          // Reset tombol
+          if (btn) btn.disabled = false;
+          if (iconEl) iconEl.textContent = '💰';
+          if (textEl) textEl.textContent = 'SETOR ZAKAT SEKARANG';
 
-      // Buka modal pilih lembaga
-      const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
-      const khumusNum = parseInt(document.getElementById('est-khumus').innerText.replace(/[^0-9]/g, '')) || 0;
-      const totalSetor = zakatNum + khumusNum;
-      
-      mulaiSetor('zakat_maal', totalSetor);
+          // Buka modal pilih lembaga
+          const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
+          const khumusNum = parseInt(document.getElementById('est-khumus').innerText.replace(/[^0-9]/g, '')) || 0;
+          const totalSetor = zakatNum + khumusNum;
+          
+          isProcessing = false; 
+          mulaiSetor('zakat_maal', totalSetor);
+      });
     })      
     .catch(err => {
+      isProcessing = false;
       const overlay = document.getElementById('success-overlay');
       if (overlay) overlay.style.display = 'none';
       
@@ -1319,7 +1374,7 @@ function switchSubTabZakat(name) {
       if (iconEl) iconEl.textContent = '💰';
       if (textEl) textEl.textContent = 'SETOR ZAKAT SEKARANG';
     });
-  } // <-- Pastikan kurung kurawal penutup fungsi ada di sini
+}
 
   function prosesSetorZakat() {
     const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
@@ -2529,11 +2584,9 @@ async function prosesSetorInfaq() {
         return;
     }
 
-    // 1. Kunci UI agar tidak bentrok dengan hitungZakatOtomatis
     isProcessing = true; 
     
     try {
-        // 2. Simpan Infaq ke database sebagai pengeluaran
         const r = await fetch('/api/input/syariah', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -2545,17 +2598,25 @@ async function prosesSetorInfaq() {
         });
         const d = await r.json();
         
+        // ✅ PERBAIKAN: Gunakan 'd', bukan 'dUpload'
         if (d.status === 'success') {
-            // 3. Tarik data terbaru dari server (agar Harta tidak jadi 0)
+            // 1. Reset form input ke 0
+            ['f-gaji','f-hadiah','f-tani','f-mewah','f-temuan','f-bmt','f-rutin','f-sekolah','f-utang','f-sedekah'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = 0;
+            });
+ 
+            // 2. Tarik data terbaru dari server
             await muatDataPusat(); 
+            
+            // 3. Update header dari form yang kosong
+            hitungZakatOtomatis(); 
             
             // 4. Buka modal pilih lembaga
             setTimeout(() => {
                 mulaiSetor('infaq', nominal);
-                // 5. Buka kunci UI SETELAH modal terbuka
                 isProcessing = false; 
             }, 500);
-            
         } else {
             isProcessing = false;
             alert('❌ Gagal: ' + d.message);
