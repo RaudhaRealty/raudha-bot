@@ -221,15 +221,27 @@
     </div>
   </div>
 
-  <!-- Tombol Setor Zakat -->
-  <button id="btn-submit" onclick="simpanDataSyariah()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 mt-4">
-    <span id="btn-submit-icon" class="text-2xl">💰</span>
-    <span class="text-left">
-      <span id="btn-submit-text" class="block text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
-      <span class="block text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
-    </span>
-  </button>
-</div>
+  <!-- Tombol Aksi Setor -->
+  <div class="space-y-3 mt-4">
+    <!-- Tombol Zakat (Sembunyi jika tidak wajib) -->
+    <button id="btn-submit-zakat" onclick="prosesSetorZakat()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3">
+      <span class="text-2xl">💰</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
+        <span class="block text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
+      </span>
+    </button>
+
+    <!-- Tombol Khumus (Sembunyi jika tidak wajib) -->
+    <button id="btn-submit-khumus" onclick="prosesSetorKhumus()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black py-5 rounded-2xl shadow-2xl shadow-amber-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 hidden">
+      <span class="text-2xl">📿</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">TUNAIKAN KHUMUS</span>
+        <span class="block text-[10px] font-normal opacity-90">1/5 dari harta temuan atau surplus</span>
+      </span>
+    </button>
+  </div>
+</div> <!-- ✅ JANGAN LUPA: Ini penutup div id="tab-zakat" -->
 
   <!-- ==================== TAB 2: BMT ==================== -->
   <div id="tab-bmt" class="tab-content tab-hidden space-y-4">
