@@ -84,106 +84,151 @@
     
 <!-- ==================== TAB 1: ZAKAT ==================== -->
 <div id="tab-zakat" class="tab-content tab-visible space-y-4">
-  <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+
+  <!-- SUB-TAB NAVIGATION -->
+  <div class="card-bg-white p-1.5 rounded-2xl shadow-sm border flex gap-1 sticky top-[140px] z-30">
+    <button type="button" onclick="switchSubTabZakat('pendapatan')" id="btn-sub-zakat-pendapatan" class="flex-1 py-2 px-1 text-center text-xs font-black rounded-xl bg-emerald-600 text-white transition">
+      💵 Pendapatan
+    </button>
+    <button type="button" onclick="switchSubTabZakat('pertanian')" id="btn-sub-zakat-pertanian" class="flex-1 py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">
+      🌾 Pertanian
+    </button>
+    <button type="button" onclick="switchSubTabZakat('aset')" id="btn-sub-zakat-aset" class="flex-1 py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">
+      👑 Aset
+    </button>
+    <button type="button" onclick="switchSubTabZakat('pengeluaran')" id="btn-sub-zakat-pengeluaran" class="flex-1 py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">
+      📉 Keluar
+    </button>
+  </div>
+
+  <!-- SUB-TAB 1: PENDAPATAN -->
+  <div id="sub-zakat-pendapatan" class="sub-zakat-content space-y-4">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3">
-      <span class="text-xl">💵</span> Pendapatan & Kas Masuk
+        <span class="text-xl">💵</span> Pendapatan & Kas Masuk
       </h3>
-    <div class="grid grid-cols-2 gap-2">
+      <div class="space-y-3">
         <div>
           <label class="block text-sm font-black text-slate-700 mb-2">Gaji & Honor (Rp)</label>
           <input type="number" id="f-gaji" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Hadiah/Bonus (Rp)</label>
-         <input type="number" id="f-hadiah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+          <label class="block text-sm font-black text-slate-700 mb-2">Hadiah/Bonus/Hibah (Rp)</label>
+          <input type="number" id="f-hadiah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
+      </div>
     </div>
   </div>
+
+  <!-- SUB-TAB 2: PERTANIAN -->
+  <div id="sub-zakat-pertanian" class="sub-zakat-content space-y-4 hidden">
     <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
-      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🌾</span> Hasil Pertanian</h3>
-      <div class="grid grid-cols-2 gap-2">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3">
+        <span class="text-xl">🌾</span> Hasil Pertanian
+      </h3>
+      <div class="space-y-3">
         <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Hasil Panen (Kg)</label>
-          <input type="number" id="f-tani" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+          <label class="block text-sm font-black text-slate-700 mb-2">Hasil Panen (Kg)</label>
+          <input type="number" id="f-tani" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Pengairan</label>
-          <select id="f-pengairan" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
-            <option value="irigasi">🚜 Irigasi (5%)</option>
-            <option value="tadah_hujan">🌧️ Tadah Hujan (10%)</option>
+          <label class="block text-sm font-black text-slate-700 mb-2">Jenis Pengairan</label>
+          <select id="f-pengairan" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-bold text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+            <option value="irigasi">🚜 Pompa/Irigasi Berbayar (5%)</option>
+            <option value="tadah_hujan">🌧️ Tadah Hujan/Sungai (10%)</option>
           </select>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- SUB-TAB 3: ASET & TEMUAN -->
+  <div id="sub-zakat-aset" class="sub-zakat-content space-y-4 hidden">
     <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
-      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>👑</span> Logam Mulia & Temuan</h3>
-      <div class="grid grid-cols-3 gap-2">
-        <div class="col-span-2">
-         <label class="block text-sm font-black text-slate-700 mb-2">Nominal Aset</label>
-          <input type="number" id="f-mewah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3">
+        <span class="text-xl">👑</span> Logam Mulia & Temuan
+      </h3>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Nilai Aset Emas/Perak/Koleksi</label>
+          <div class="flex gap-2">
+            <input type="number" id="f-mewah" value="0" class="flex-1 p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+            <select id="f-tipe-mewah" class="w-28 p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-bold text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+              <option value="gram">Gram</option>
+              <option value="rupiah">Rupiah</option>
+            </select>
+          </div>
         </div>
         <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Satuan</label>
-          <select id="f-tipe-mewah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
-            <option value="gram">Gram</option>
-            <option value="rupiah">Rupiah</option>
-          </select>
-        </div>
-      </div>
-      <div>
-       <label class="block text-sm font-black text-slate-700 mb-2">Harta Karun / Temuan (Rp)</label>
-       <input type="number" id="f-temuan" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
-      </div>
-    </div>
-
-    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
-      <h3 class="text-sm font-black text-rose-800 flex items-center gap-1.5 border-b pb-2"><span>📉</span> Pengeluaran</h3>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Rutin & Listrik (Rp)</label>
-         <input type="number" id="f-rutin" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
-        </div>
-        <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Sekolah (Rp)</label>
-          <input type="number" id="f-sekolah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Utang (Rp)</label>
-          <input type="number" id="f-utang" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
-        </div>
-        <div>
-         <label class="block text-sm font-black text-slate-700 mb-2">Sedekah (Rp)</label>
-          <input type="number" id="f-sedekah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+          <label class="block text-sm font-black text-slate-700 mb-2">Harta Karun / Temuan (Rp)</label>
+          <input type="number" id="f-temuan" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-4 border-2 border-slate-700">
-      <div class="flex justify-between items-center text-xs"><span>Estimasi Zakat Maal + Tani:</span><span id="est-zakat" class="font-black text-emerald-400">Rp 0</span></div>
-      <div class="flex justify-between items-center text-xs"><span>Estimasi Khumus:</span><span id="est-khumus" class="font-black text-amber-400">Rp 0</span></div>
-      <div class="pt-2 border-t border-slate-700 flex items-center justify-between">
-        <span class="text-[10px] text-slate-300">Khumus Wajib (QS. Al-Anfal: 41)</span>
-        <label class="relative inline-flex items-center cursor-pointer">
+  <!-- SUB-TAB 4: PENGELUARAN -->
+  <div id="sub-zakat-pengeluaran" class="sub-zakat-content space-y-4 hidden">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-rose-800 flex items-center gap-2 border-b-2 border-rose-100 pb-3">
+        <span class="text-xl">📉</span> Pengeluaran & Pengurang
+      </h3>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Rutin/Listrik (Rp)</label>
+            <input type="number" id="f-rutin" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Sekolah (Rp)</label>
+            <input type="number" id="f-sekolah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Utang (Rp)</label>
+            <input type="number" id="f-utang" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Sedekah (Rp)</label>
+            <input type="number" id="f-sedekah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RINGKASAN HASIL (Selalu Tampil di Bawah) -->
+  <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-4 border-2 border-slate-700">
+    <div class="flex justify-between items-center text-base">
+      <span>Estimasi Zakat Maal + Tani:</span>
+      <span id="est-zakat" class="font-black text-emerald-400">Rp 0</span>
+    </div>
+    <div class="flex justify-between items-center text-base">
+      <span>Estimasi Khumus:</span>
+      <span id="est-khumus" class="font-black text-amber-400">Rp 0</span>
+    </div>
+    <div class="pt-3 border-t border-slate-700 flex items-center justify-between">
+      <span class="text-sm text-slate-300">Khumus Wajib (QS. Al-Anfal: 41)</span>
+      <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="toggle-khumus" class="sr-only peer" checked onchange="toggleKhumus(this)">
-        <span class="block w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></span>
-        </label>
-      </div>
-      <div class="pt-2 border-t border-slate-700 text-[10px] text-slate-300 leading-relaxed">
-        <div class="flex justify-between"><span>Status Haul:</span><span id="info-haul" class="font-bold text-amber-300">Memuat...</span></div>
-        <p id="info-haul-detail" class="text-slate-600 mt-1">—</p>
-      </div>
+        <span class="block w-11 h-6 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></span>
+      </label>
     </div>
-     <!-- Tombol Setor Zakat (sekarang di dalam tab) -->
-    <button id="btn-submit" onclick="simpanDataSyariah()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 mt-4">
-      <span id="btn-submit-icon" class="text-2xl">💰</span>
-      <span class="text-left">
-        <span id="btn-submit-text" class="text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
-        <span class="text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
-      </span>
-    </button>   
+    <div class="pt-3 border-t border-slate-700 text-sm text-slate-300 leading-relaxed">
+      <div class="flex justify-between"><span>Status Haul:</span><span id="info-haul" class="font-bold text-amber-300">Memuat...</span></div>
+      <p id="info-haul-detail" class="text-slate-500 mt-1 text-xs">—</p>
+    </div>
+  </div>
+
+  <!-- Tombol Setor Zakat -->
+  <button id="btn-submit" onclick="simpanDataSyariah()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 mt-4">
+    <span id="btn-submit-icon" class="text-2xl">💰</span>
+    <span class="text-left">
+      <span id="btn-submit-text" class="block text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
+      <span class="block text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
+    </span>
+  </button>
 </div>
 
   <!-- ==================== TAB 2: BMT ==================== -->
@@ -485,10 +530,7 @@
       </div>
     </div>
   </div> <!-- END subtab-users -->
-
-
-
-    
+   
 <!-- GLOBAL ACTION BUTTON -->
 
 <!-- ✨ MODAL 1: PILIH LEMBAGA -->
@@ -1016,6 +1058,30 @@ console.log('[DEBUG] userId final:', window.userId);
     if (name === 'daftar') cekStatusLembaga();
     if (name === 'tagihan') muatTagihan();
   }
+
+function switchSubTabZakat(name) {
+  // Sembunyikan semua sub-tab
+  document.querySelectorAll('.sub-zakat-content').forEach(el => {
+    el.classList.add('hidden');
+  });
+  
+  // Tampilkan sub-tab yang dipilih
+  const aktif = document.getElementById('sub-zakat-' + name);
+  if (aktif) aktif.classList.remove('hidden');
+
+  // Ubah warna tombol sub-tab
+  ['pendapatan','pertanian','aset','pengeluaran'].forEach(t => {
+    const btn = document.getElementById('btn-sub-zakat-' + t);
+    if (!btn) return;
+    if (t === name) {
+      btn.classList.add('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.remove('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    } else {
+      btn.classList.remove('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.add('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    }
+  });
+}
 
   // =====================================================================
   // MUAT DATA PUSAT
