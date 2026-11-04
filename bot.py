@@ -269,8 +269,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
        # ============ MENU UTAMA ============
-    url_mini_app = f"{MINI_APP_URL}?t={int(time.time())}"
-    
+    url_mini_app = f"{MINI_APP_URL}?ngrok-skip-browser-warning=true&t={int(time.time())}"
     text = (
         "👋 **Salam dan Selamat Datang di Raudha - Marbot yang melayani anda dalam mengkreasi kebaikan setiap hari, selaras dengan motto - Recreate All The New Day:**\n\n"
         "Silakan gunakan tombol interaktif di bawah ini untuk mengakses setiap layanan:"

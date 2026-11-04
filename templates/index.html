@@ -7,10 +7,36 @@
 <link rel="icon" href="data:,">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body { background-color:#f8fafc !important; color:#1e293b !important; -webkit-user-select:none; user-select:none; }
+  body { background-color:#f8fafc !important; color:#0f172a !important; 
+    font-size: 16px; /* Font dasar lebih besar */
+    -webkit-user-select:none; 
+    user-select:none; 
+  }
   .card-bg-white { background-color:#fff !important; }
   .tab-hidden { display:none !important; }
   .tab-visible { display:block !important; }
+  /* Perbesar input untuk lansia */
+  input[type="number"], input[type="text"], select, textarea {
+    font-size: 16px !important; /* Mencegah zoom di iOS & mudah dibaca */
+    padding: 14px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+  
+  /* Label lebih tegas */
+  label {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #334155 !important;
+    letter-spacing: 0.02em;
+  }
+  
+  /* Judul card lebih besar */
+  h3 {
+    font-size: 16px !important;
+    font-weight: 900 !important;
+  }
+
   @keyframes overlayPop { 0%{opacity:0;transform:scale(0.9);} 100%{opacity:1;transform:scale(1);} }
   @keyframes iconPop { 0%{opacity:0;transform:scale(0.3) rotate(-30deg);} 60%{transform:scale(1.15) rotate(5deg);} 100%{opacity:1;transform:scale(1) rotate(0);} }
 </style>
@@ -36,42 +62,52 @@
 <!-- MAIN WRAPPER -->
 <div class="max-w-md mx-auto p-4 space-y-6 pb-28">
 
-  <!-- TAB NAV -->
-  <div class="card-bg-white p-2 rounded-2xl shadow-sm border flex gap-1 sticky top-[72px] z-40">
-    <button id="btn-tab-zakat" onclick="switchMenuTab('zakat')" class="flex-1 py-2.5 text-center text-xs font-black rounded-xl bg-emerald-600 text-white transition-all duration-150">💰 Zakat</button>
-    <button id="btn-tab-bmt" onclick="switchMenuTab('bmt')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">🪙 BMT</button>
-    <button id="btn-tab-tagihan" onclick="switchMenuTab('tagihan')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">🧾 Tagihan</button>    
-    <button id="btn-tab-laporan" onclick="switchMenuTab('laporan')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">📊 Audit</button>
-    <button id="btn-tab-daftar" onclick="switchMenuTab('daftar')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150">🏛️ Lembaga</button>
-    <button id="btn-tab-admin" onclick="switchMenuTab('admin')" class="flex-1 py-2.5 text-center text-xs font-bold rounded-xl text-slate-500 hover:bg-slate-100 transition-all duration-150" style="display:none;">👑 Super Admin</button> 
-  </div>
-
+ 
+<!-- TAB NAV (User Umum - Rapi & Simetris) -->
+<div class="card-bg-white p-1.5 rounded-2xl shadow-md border-2 border-slate-200 flex justify-between gap-1 sticky top-[72px] z-40 overflow-x-auto">
+  <button type="button" id="btn-tab-zakat" onclick="switchMenuTab('zakat')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-black rounded-xl bg-emerald-600 text-white transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">💰</span><span class="pointer-events-none">Zakat</span>
+  </button>
+  <button type="button" id="btn-tab-bmt" onclick="switchMenuTab('bmt')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🪙</span><span class="pointer-events-none">BMT</span>
+  </button>
+  <button type="button" id="btn-tab-tagihan" onclick="switchMenuTab('tagihan')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🧾</span><span class="pointer-events-none">Tagihan</span>
+  </button>    
+  <button type="button" id="btn-tab-laporan" onclick="switchMenuTab('laporan')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">📊</span><span class="pointer-events-none">Audit</span>
+  </button>
+  <button type="button" id="btn-tab-daftar" onclick="switchMenuTab('daftar')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🏛️</span><span class="pointer-events-none">Lembaga</span>
+  </button>
+</div>
     
-  <!-- ==================== TAB 1: ZAKAT ==================== -->
-  <div id="tab-zakat" class="tab-content tab-visible space-y-4">
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-      <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>💵</span> Pendapatan & Kas Masuk</h3>
-      <div class="grid grid-cols-2 gap-2">
+<!-- ==================== TAB 1: ZAKAT ==================== -->
+<div id="tab-zakat" class="tab-content tab-visible space-y-4">
+  <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3">
+      <span class="text-xl">💵</span> Pendapatan & Kas Masuk
+      </h3>
+    <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Gaji & Honor (Rp)</label>
-          <input type="number" id="f-gaji" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+          <label class="block text-sm font-black text-slate-700 mb-2">Gaji & Honor (Rp)</label>
+          <input type="number" id="f-gaji" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Hadiah/Bonus (Rp)</label>
-          <input type="number" id="f-hadiah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Hadiah/Bonus (Rp)</label>
+         <input type="number" id="f-hadiah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
-      </div>
     </div>
-
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+  </div>
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🌾</span> Hasil Pertanian</h3>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Hasil Panen (Kg)</label>
+         <label class="block text-sm font-black text-slate-700 mb-2">Hasil Panen (Kg)</label>
           <input type="number" id="f-tani" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Pengairan</label>
+         <label class="block text-sm font-black text-slate-700 mb-2">Pengairan</label>
           <select id="f-pengairan" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
             <option value="irigasi">🚜 Irigasi (5%)</option>
             <option value="tadah_hujan">🌧️ Tadah Hujan (10%)</option>
@@ -80,15 +116,15 @@
       </div>
     </div>
 
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>👑</span> Logam Mulia & Temuan</h3>
       <div class="grid grid-cols-3 gap-2">
         <div class="col-span-2">
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nominal Aset</label>
-          <input type="number" id="f-mewah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Nominal Aset</label>
+          <input type="number" id="f-mewah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Satuan</label>
+         <label class="block text-sm font-black text-slate-700 mb-2">Satuan</label>
           <select id="f-tipe-mewah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
             <option value="gram">Gram</option>
             <option value="rupiah">Rupiah</option>
@@ -96,43 +132,43 @@
         </div>
       </div>
       <div>
-        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Harta Karun / Temuan (Rp)</label>
-        <input type="number" id="f-temuan" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+       <label class="block text-sm font-black text-slate-700 mb-2">Harta Karun / Temuan (Rp)</label>
+       <input type="number" id="f-temuan" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
       </div>
     </div>
 
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-sm font-black text-rose-800 flex items-center gap-1.5 border-b pb-2"><span>📉</span> Pengeluaran</h3>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Rutin & Listrik (Rp)</label>
-          <input type="number" id="f-rutin" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Rutin & Listrik (Rp)</label>
+         <input type="number" id="f-rutin" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Sekolah (Rp)</label>
-          <input type="number" id="f-sekolah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Sekolah (Rp)</label>
+          <input type="number" id="f-sekolah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Utang (Rp)</label>
-          <input type="number" id="f-utang" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Utang (Rp)</label>
+          <input type="number" id="f-utang" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Sedekah (Rp)</label>
-          <input type="number" id="f-sedekah" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-rose-500">
+         <label class="block text-sm font-black text-slate-700 mb-2">Sedekah (Rp)</label>
+          <input type="number" id="f-sedekah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
         </div>
       </div>
     </div>
 
-    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-md space-y-2 border border-slate-800">
+    <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-4 border-2 border-slate-700">
       <div class="flex justify-between items-center text-xs"><span>Estimasi Zakat Maal + Tani:</span><span id="est-zakat" class="font-black text-emerald-400">Rp 0</span></div>
       <div class="flex justify-between items-center text-xs"><span>Estimasi Khumus:</span><span id="est-khumus" class="font-black text-amber-400">Rp 0</span></div>
       <div class="pt-2 border-t border-slate-700 flex items-center justify-between">
         <span class="text-[10px] text-slate-300">Khumus Wajib (QS. Al-Anfal: 41)</span>
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="toggle-khumus" class="sr-only peer" checked onchange="toggleKhumus(this)">
-          <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+        <input type="checkbox" id="toggle-khumus" class="sr-only peer" checked onchange="toggleKhumus(this)">
+        <span class="block w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></span>
         </label>
       </div>
       <div class="pt-2 border-t border-slate-700 text-[10px] text-slate-300 leading-relaxed">
@@ -143,12 +179,12 @@
      <!-- Tombol Setor Zakat (sekarang di dalam tab) -->
     <button id="btn-submit" onclick="simpanDataSyariah()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 mt-4">
       <span id="btn-submit-icon" class="text-2xl">💰</span>
-      <div class="text-left">
-        <div id="btn-submit-text" class="text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</div>
-        <div class="text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</div>
-      </div>
+      <span class="text-left">
+        <span id="btn-submit-text" class="text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
+        <span class="text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
+      </span>
     </button>   
-  </div>
+</div>
 
   <!-- ==================== TAB 2: BMT ==================== -->
   <div id="tab-bmt" class="tab-content tab-hidden space-y-4">
@@ -166,8 +202,8 @@
         </div>
       </div>
       <div>
-        <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Tambah Tabungan (Rp)</label>
-        <input type="number" id="f-bmt" value="0" class="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none font-bold text-sm focus:ring-2 focus:ring-amber-500">
+       <label class="block text-sm font-black text-slate-700 mb-2">Tambah Tabungan (Rp)</label>
+        <input type="number" id="f-bmt" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition">
       </div>
     </div>
   </div>
@@ -176,7 +212,7 @@
   <div id="tab-tagihan" class="tab-content tab-hidden space-y-4">
 
     <!-- Ringkasan -->
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-sm font-black text-blue-800 flex items-center gap-1.5 border-b pb-2">
         <span>🧾</span> Ringkasan Tagihan
       </h3>
@@ -195,14 +231,14 @@
         </div>
       </div>
     </div>
-
+  
     <!-- Tombol Tambah -->
     <button onclick="bukaFormTambahTagihan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-900/20 transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
       <span>➕</span> Tambah Tagihan Baru
     </button>
 
     <!-- Daftar Tagihan -->
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
       <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5 border-b pb-2">
         <span>📋</span> Daftar Tagihan
       </h3>
@@ -222,7 +258,7 @@
           <input type="hidden" id="tagihan-id-edit" value="">
           
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jenis Tagihan *</label>
+           <label class="block text-sm font-black text-slate-700 mb-2">Jenis Tagihan *</label>
             <select id="tagihan-jenis" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
               <option value="listrik">⚡ Listrik (PLN)</option>
               <option value="air">💧 Air (PDAM)</option>
@@ -236,22 +272,22 @@
           </div>
           
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Tagihan *</label>
+           <label class="block text-sm font-black text-slate-700 mb-2">Nama Tagihan *</label>
             <input type="text" id="tagihan-nama" placeholder="PLN Rumah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
           </div>
           
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nominal (Rp) *</label>
+           <label class="block text-sm font-black text-slate-700 mb-2">Nominal (Rp) *</label>
             <input type="number" id="tagihan-nominal" placeholder="500000" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
           </div>
           
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jatuh Tempo</label>
+             <label class="block text-sm font-black text-slate-700 mb-2">Jatuh Tempo</label>
               <input type="date" id="tagihan-jatuh-tempo" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Frekuensi</label>
+             <label class="block text-sm font-black text-slate-700 mb-2">Frekuensi</label>
               <select id="tagihan-frekuensi" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
                 <option value="sekali">Sekali</option>
                 <option value="bulanan">Bulanan</option>
@@ -261,7 +297,7 @@
           </div>
           
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan (opsional)</label>
+           <label class="block text-sm font-black text-slate-700 mb-2">Catatan (opsional)</label>
             <textarea id="tagihan-catatan" rows="2" placeholder="Token listrik rumah" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"></textarea>
           </div>
           
@@ -332,7 +368,7 @@
       </div>
     </div>
 
-            <!-- Form Kelola Agenda -->
+      <!-- Form Kelola Agenda -->
       <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 mt-3">
         <p class="text-xs font-bold text-slate-700">📅 Kelola Agenda & Hari Besar</p>
         
@@ -355,7 +391,7 @@
         <button onclick="simpanAgenda()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">➕ Tambah Agenda</button>
       </div>
 
-        <!-- ✨ [BARU] PEMBAYARAN MASUK -->
+    <!-- ✨ [BARU] PEMBAYARAN MASUK -->
     <div id="lembaga-pembayaran-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
       <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5 border-b pb-2">
         <span>📥</span> Pembayaran Masuk
@@ -437,78 +473,7 @@
   </div>
 
  <!-- ==================== TAB 5: ADMIN (khusus Super Admin) ==================== -->
-<div id="tab-admin" class="tab-content tab-hidden space-y-4">
 
-  <!-- Sub-tab Navigation -->
-  <div class="card-bg-white p-2 rounded-2xl shadow-sm border flex gap-1 sticky top-[72px] z-30">
-    <button id="btn-subtab-pengajuan" onclick="switchSubTab('pengajuan')" class="flex-1 py-2 text-center text-[10px] font-black rounded-lg bg-purple-600 text-white">📋 Pengajuan</button>
-    <button id="btn-subtab-users" onclick="switchSubTab('users')" class="flex-1 py-2 text-center text-[10px] font-bold rounded-lg text-slate-500 hover:bg-slate-100">👥 Users</button>
-  </div>
-
-  <!-- Sub-tab: Pengajuan Lembaga -->
-  <div id="subtab-pengajuan" class="subtab-content space-y-4">
-
-    <!-- ISI 1: Ringkasan Admin (Panel Super Admin) -->
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-      <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5 border-b pb-2"><span>🔐</span> Panel Super Admin</h3>
-      <p class="text-[10px] text-slate-500 leading-relaxed">Kelola pengajuan lembaga, verifikasi tahap, dan aktifkan lembaga baru.</p>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-amber-50 p-2 rounded-xl border border-amber-200">
-          <p class="text-[9px] text-amber-700 font-bold uppercase">Pending</p>
-          <p id="admin-count-pending" class="text-lg font-black text-amber-700">0</p>
-        </div>
-        <div class="bg-emerald-50 p-2 rounded-xl border border-emerald-200">
-          <p class="text-[9px] text-emerald-700 font-bold uppercase">Verified</p>
-          <p id="admin-count-verified" class="text-lg font-black text-emerald-700">0</p>
-        </div>
-        <div class="bg-rose-50 p-2 rounded-xl border border-rose-200">
-          <p class="text-[9px] text-rose-700 font-bold uppercase">Suspended</p>
-          <p id="admin-count-suspended" class="text-lg font-black text-rose-700">0</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ISI 2: Pengajuan Menunggu Verifikasi -->
-    <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-      <h3 class="text-sm font-black text-slate-800 border-b pb-2 flex items-center gap-1.5"><span>📋</span> Pengajuan Menunggu Verifikasi</h3>
-      <div id="admin-pengajuan-list" class="space-y-2">
-        <p class="text-slate-600 text-xs text-center py-4">Memuat...</p>
-      </div>
-    </div>
-
-    <!-- ISI 3: Detail Lembaga (hidden default) -->
-    <div id="admin-detail-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-purple-200 space-y-3" style="display:none;">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5"><span>🔍</span> Detail Lembaga</h3>
-        <button onclick="tutupDetailAdmin()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
-      </div>
-      <div id="admin-detail-content" class="text-xs text-slate-600 space-y-2"></div>
-
-      <div class="bg-purple-50 p-3 rounded-xl border border-purple-200 space-y-2">
-        <p class="text-[10px] font-bold text-purple-800">Verifikasi Tahap:</p>
-        <div class="grid grid-cols-2 gap-2">
-          <select id="admin-verif-tahap" class="p-2 bg-white border border-purple-300 rounded-lg text-xs font-bold">
-            <option value="dokumen">Dokumen</option>
-            <option value="video_call">Video Call</option>
-            <option value="kunjungan">Kunjungan</option>
-            <option value="keputusan">Keputusan</option>
-          </select>
-          <select id="admin-verif-status" class="p-2 bg-white border border-purple-300 rounded-lg text-xs font-bold">
-            <option value="lolos">✅ Lolos</option>
-            <option value="gagal">❌ Gagal</option>
-          </select>
-        </div>
-        <input type="text" id="admin-verif-catatan" placeholder="Catatan verifikasi (opsional)" class="w-full p-2 bg-white border border-purple-300 rounded-lg text-xs">
-        <button onclick="submitVerifikasiTahap()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-2 rounded-lg text-xs">📝 Simpan Tahap Verifikasi</button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button onclick="aktifkanLembaga()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 rounded-lg text-xs">✅ Aktifkan</button>
-        <button onclick="suspendLembaga()" class="bg-rose-600 hover:bg-rose-700 text-white font-black py-2 rounded-lg text-xs">⚠️ Suspend</button>
-      </div>
-    </div>
-
-  </div> <!-- END subtab-pengajuan -->
 
   <!-- Sub-tab: Kelola User -->
   <div id="subtab-users" class="subtab-content space-y-4" style="display:none;">
@@ -521,7 +486,7 @@
     </div>
   </div> <!-- END subtab-users -->
 
-</div> <!-- END tab-admin -->
+
 
     
 <!-- GLOBAL ACTION BUTTON -->
@@ -702,7 +667,6 @@
       </button>
     </div>
   </div>
-
 </div>
 
 <!-- OVERLAY SUKSES -->
@@ -735,6 +699,8 @@
   </div>
 </div>
 
+</div>
+
 <!-- TELEGRAM SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -743,6 +709,7 @@
 // =====================================================================
 // KAMUS BAHASA
 // =====================================================================
+
 const TRANSLATIONS = {
   id: {
     'tab.zakat': '💰 Zakat',
@@ -821,6 +788,7 @@ async function loadLanguage() {
     }
   } catch(e) { console.log('Gagal load bahasa:', e); }
 }
+
 async function downloadPDF() {
   if (!userId || userId === 99999) {
     alert('⚠️ Download PDF hanya tersedia di Telegram (user_id valid).');
@@ -903,6 +871,7 @@ window.fetch = function(url, options = {}) {
     }
     return _originalFetch(url, options);
 };
+
 // ===== END TELEGRAM AUTH =====
 
 let currentLembagaId = null;
@@ -927,6 +896,7 @@ console.log('[DEBUG] userId final:', window.userId);
   // =====================================================================
   // HELPERS
   // =====================================================================
+  
   function formatRupiah(val) {
     return 'Rp ' + parseInt(val || 0).toLocaleString('id-ID').replace(/,/g, '.');
   }
@@ -949,38 +919,37 @@ console.log('[DEBUG] userId final:', window.userId);
     requestAnimationFrame(step);
   }
 
-// =====================================================================
-// UPDATE LABEL TOMBOL SETOR (dinamis per jenis)
-// =====================================================================
-function updateLabelTombolSetor() {
-  const iconEl = document.getElementById('btn-submit-icon');
-  const textEl = document.getElementById('btn-submit-text');
-  if (!iconEl || !textEl) return;
-  
-  // Cek apakah user memilih jenis kewajiban lain
-  // Default: zakat_maal (karena form saat ini fokus zakat)
-  const jenis = 'zakat_maal';  // bisa diubah nanti kalau ada dropdown jenis
-  
-  const labelMap = {
-    'zakat_maal': { icon: '💰', text: 'SETOR ZAKAT SEKARANG', sub: 'Bayar ke lembaga amil terverifikasi' },
-    'zakat_tani': { icon: '🌾', text: 'SETOR ZAKAT TANI', sub: 'Dari hasil panen Anda' },
-    'khumus': { icon: '📿', text: 'TUNAIKAN KHUMUS', sub: '1/5 dari harta temuan' },
-    'infaq': { icon: '💸', text: 'SALURKAN INFAQ', sub: 'Untuk kemaslahatan umat' },
-    'sedekah': { icon: '🤲', text: 'SALURKAN SEDEKAH', sub: 'Sedekah sukarela Anda' },
-  };
-  
-  const label = labelMap[jenis] || labelMap['zakat_maal'];
-  iconEl.innerText = label.icon;
-  textEl.innerText = label.text;
-  
-  // Update sub-teks (kalau ada elemennya)
-  const subEl = textEl.parentElement.querySelector('div:last-child');
-  if (subEl) subEl.innerText = label.sub;
-}
+    // =====================================================================
+  // UPDATE LABEL TOMBOL SETOR (dinamis per jenis)
+  // =====================================================================
+
+  function updateLabelTombolSetor() {
+    const iconEl = document.getElementById('btn-submit-icon');
+    const textEl = document.getElementById('btn-submit-text');
+    if (!iconEl || !textEl) return;
+    
+    const jenis = 'zakat_maal';
+    
+    const labelMap = {
+      'zakat_maal': { icon: '💰', text: 'SETOR ZAKAT SEKARANG', sub: 'Bayar ke lembaga amil terverifikasi' },
+      'zakat_tani': { icon: '🌾', text: 'SETOR ZAKAT TANI', sub: 'Dari hasil panen Anda' },
+      'khumus': { icon: '📿', text: 'TUNAIKAN KHUMUS', sub: '1/5 dari harta temuan' },
+      'infaq': { icon: '💸', text: 'SALURKAN INFAQ', sub: 'Untuk kemaslahatan umat' },
+      'sedekah': { icon: '🤲', text: 'SALURKAN SEDEKAH', sub: 'Sedekah sukarela Anda' },
+    };
+    
+    const label = labelMap[jenis] || labelMap['zakat_maal'];
+    iconEl.innerText = label.icon;
+    textEl.innerText = label.text;
+    
+    const subEl = textEl.parentElement.querySelector('div:last-child');
+    if (subEl) subEl.innerText = label.sub;
+  }
 
   // =====================================================================
   // HITUNG ZAKAT OTOMATIS
   // =====================================================================
+
   function hitungZakatOtomatis() {
     const gaji = bacaInputAman('f-gaji');
     const hadiah = bacaInputAman('f-hadiah');
@@ -1018,35 +987,40 @@ function updateLabelTombolSetor() {
   // =====================================================================
   // NAVIGASI TAB
   // =====================================================================
+
   function switchMenuTab(name) {
     document.querySelectorAll('.tab-content').forEach(el => {
-      el.classList.remove('tab-visible'); el.classList.add('tab-hidden');
+        el.classList.remove('tab-visible'); 
+        el.classList.add('tab-hidden');
     });
+    
     const aktif = document.getElementById('tab-' + name);
-    if (aktif) { aktif.classList.remove('tab-hidden'); aktif.classList.add('tab-visible'); }
+    if (aktif) { 
+        aktif.classList.remove('tab-hidden'); 
+        aktif.classList.add('tab-visible'); 
+    }
 
-    ['zakat','bmt','tagihan','laporan','daftar','admin'].forEach(t => {
-      const btn = document.getElementById('btn-tab-' + t);
-      if (!btn) return;
-      if (t === name) {
-        btn.classList.add('bg-emerald-600','text-white','font-black');
-        btn.classList.remove('text-slate-500','font-bold','hover:bg-slate-100');
-      } else {
-        btn.classList.remove('bg-emerald-600','text-white','font-black');
-        btn.classList.add('text-slate-500','font-bold','hover:bg-slate-100');
-      }
+    ['zakat','bmt','tagihan','laporan','daftar'].forEach(t => {
+        const btn = document.getElementById('btn-tab-' + t);
+        if (!btn) return;
+        if (t === name) {
+            btn.classList.add('bg-emerald-600', 'text-white', 'font-black');
+            btn.classList.remove('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+        } else {
+            btn.classList.remove('bg-emerald-600', 'text-white', 'font-black');
+            btn.classList.add('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+        }
     });
+    
     if (name === 'laporan') muatDataPusat();
     if (name === 'daftar') cekStatusLembaga();
-    if (name === 'admin') {
-      switchSubTab('pengajuan');   // default sub-tab: Pengajuan
-    if (name === 'tagihan') muatTagihan();  
-    }
+    if (name === 'tagihan') muatTagihan();
   }
 
   // =====================================================================
   // MUAT DATA PUSAT
   // =====================================================================
+
   function muatDataPusat() {
     fetch('/api/laporan/' + userId)
       .then(r => r.json())
@@ -1112,6 +1086,7 @@ function updateLabelTombolSetor() {
   // =====================================================================
   // TOGGLE KHUMUS
   // =====================================================================
+
   function toggleKhumus(el) {
     const aktif = el.checked;
     if (!aktif) {
@@ -1141,32 +1116,34 @@ function updateLabelTombolSetor() {
   // =====================================================================
   // SUBMIT LAPORAN
   // =====================================================================
+
   function simpanDataSyariah() {
     const mewahVal = parseFloat(document.getElementById('f-mewah').value) || 0;
     const tipeMewah = document.getElementById('f-tipe-mewah').value;
     const nilaiMewahRupiah = (tipeMewah === 'gram') ? (mewahVal * HARGA_EMAS_BASE) : mewahVal;
 
-  // Validasi input maksimum
-  const limits = {
-    'f-gaji': { max: 100_000_000, label: 'Gaji' },
-    'f-hadiah': { max: 100_000_000, label: 'Hadiah' },
-    'f-tani': { max: 10_000, label: 'Pertanian (kg)' },
-    'f-mewah': { max: 50_000_000_000, label: 'Benda Mewah' },
-    'f-temuan': { max: 50_000_000_000, label: 'Temuan' },
-    'f-bmt': { max: 50_000_000_000, label: 'BMT' },
-    'f-rutin': { max: 1_000_000_000, label: 'Pengeluaran Rutin' },
-    'f-sekolah': { max: 1_000_000_000, label: 'Pengeluaran Sekolah' },
-    'f-utang': { max: 1_000_000_000, label: 'Pengeluaran Utang' },
-    'f-sedekah': { max: 1_000_000_000, label: 'Sedekah' },
-  };
-  for (const [id, cfg] of Object.entries(limits)) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    if (parseFloat(el.value) > cfg.max) {
-      alert(`⚠️ ${cfg.label} terlalu besar (maks ${cfg.max.toLocaleString('id-ID')}).`);
-      return;
+    // Validasi input maksimum
+    const limits = {
+      'f-gaji': { max: 100_000_000, label: 'Gaji' },
+      'f-hadiah': { max: 100_000_000, label: 'Hadiah' },
+      'f-tani': { max: 10_000, label: 'Pertanian (kg)' },
+      'f-mewah': { max: 50_000_000_000, label: 'Benda Mewah' },
+      'f-temuan': { max: 50_000_000_000, label: 'Temuan' },
+      'f-bmt': { max: 50_000_000_000, label: 'BMT' },
+      'f-rutin': { max: 1_000_000_000, label: 'Pengeluaran Rutin' },
+      'f-sekolah': { max: 1_000_000_000, label: 'Pengeluaran Sekolah' },
+      'f-utang': { max: 1_000_000_000, label: 'Pengeluaran Utang' },
+      'f-sedekah': { max: 1_000_000_000, label: 'Sedekah' },
+    };
+    
+    for (const [id, cfg] of Object.entries(limits)) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (parseFloat(el.value) > cfg.max) {
+        alert(`⚠️ ${cfg.label} terlalu besar (maks ${cfg.max.toLocaleString('id-ID')}).`);
+        return;
+      }
     }
-  }
 
     const payload = {
       user_id: userId, jenis: 'jurnal_web',
@@ -1187,17 +1164,20 @@ function updateLabelTombolSetor() {
     const btn = document.getElementById('btn-submit');
     const iconEl = document.getElementById('btn-submit-icon');
     const textEl = document.getElementById('btn-submit-text');
+    
     if (btn) btn.disabled = true;
     if (iconEl) iconEl.textContent = '⏳';
     if (textEl) textEl.textContent = 'Memproses...';
 
     fetch('/api/input/syariah', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST', 
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(d => {
       if (d.status !== 'success') throw new Error(d.message || 'Gagal');
+      
       hitungZakatOtomatis();
       muatDataPusat();
 
@@ -1214,16 +1194,18 @@ function updateLabelTombolSetor() {
       mulaiSetor('zakat_maal', totalSetor);
     })      
     .catch(err => {
-      document.getElementById('success-overlay').style.display = 'none';
+      const overlay = document.getElementById('success-overlay');
+      if (overlay) overlay.style.display = 'none';
+      
       alert('❌ ' + err.message);
 
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
       if (iconEl) iconEl.textContent = '💰';
       if (textEl) textEl.textContent = 'SETOR ZAKAT SEKARANG';
     });
-  }
+  } // <-- Pastikan kurung kurawal penutup fungsi ada di sini
 
-  function kirimKeBot(data, sisa) {
+   function kirimKeBot(data, sisa) {
     const status = document.getElementById('overlay-status');
     const box = document.getElementById('overlay-status-box');
     const spinner = document.getElementById('overlay-spinner');
@@ -1236,7 +1218,7 @@ function updateLabelTombolSetor() {
       }
       window.Telegram.WebApp.sendData(JSON.stringify(data));
       try { window.Telegram.WebApp.HapticFeedback?.notificationOccurred('success'); } catch(e) {}
-
+      
       spinner.style.display = 'none';
       check.style.display = 'flex';
       box.className = 'flex items-center gap-3 bg-emerald-100 border border-emerald-300 rounded-xl p-3';
@@ -1257,21 +1239,21 @@ function updateLabelTombolSetor() {
   }
 
   function tutupAplikasi() {
-  try {
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.close();
-    } else {
-      // Fallback untuk browser desktop: tutup overlay
-      document.getElementById('success-overlay').style.display = 'none';
+    try {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.close();
+      } else {
+        document.getElementById('success-overlay').style.display = 'none';
+      }
+    } catch (e) {
+      console.log('Close error (diabaikan):', e);
     }
-  } catch (e) {
-    console.log('Close error (diabaikan):', e);
   }
-}
 
   // =====================================================================
   // DAFTAR LEMBAGA
   // =====================================================================
+
   async function cekStatusLembaga() {
     try {
       const r = await fetch('/api/lembaga/status/' + userId);
@@ -1648,6 +1630,7 @@ async function suspendLembaga() {
 // =====================================================================
 // PEMBAYARAN MASUK — ADMIN LEMBAGA
 // =====================================================================
+
 async function muatPembayaranMasuk() {
   const listEl = document.getElementById('pembayaran-list-admin');
   if (!listEl || !currentLembagaId) return;
@@ -1722,10 +1705,10 @@ async function verifikasiPembayaran(rencanaId) {
   }
 }
 
-
 // =====================================================================
 // ✨ ALUR SETOR ZAKAT (Modal 3 Langkah)
 // =====================================================================
+
 let setorState = {
   lembagaId: null,
   lembagaNama: null,
@@ -1911,6 +1894,7 @@ async function prosesSetor() {
 // =====================================================================
 // KELOLA REKENING LEMBAGA (Admin Lembaga)
 // =====================================================================
+
 async function muatRekeningAdmin() {
   const listEl = document.getElementById('rekening-list-admin');
   if (!listEl || !currentLembagaId) return;
@@ -2034,6 +2018,7 @@ async function hapusRekening(rekId) {
 // =====================================================================
 // KELOLA USER (Super Admin)
 // =====================================================================
+
 async function muatDaftarUser() {
   const listEl = document.getElementById('users-list');
   if (!listEl) return;
@@ -2194,6 +2179,7 @@ async function nonaktifkanUser(targetId) {
 // =====================================================================
 // SUB-TAB NAVIGATION (Super Admin)
 // =====================================================================
+
 function switchSubTab(name) {
   document.querySelectorAll('.subtab-content').forEach(el => el.style.display = 'none');
   
@@ -2219,6 +2205,7 @@ function switchSubTab(name) {
 // =====================================================================
 // TAGIHAN
 // =====================================================================
+
 let tagihanCache = [];
 
 async function muatTagihan() {
@@ -2419,6 +2406,7 @@ function bukaUploadBukti(id) {
 // =====================================================================
 // ONBOARDING (Batch 13)
 // =====================================================================
+
 async function cekOnboarding() {
   try {
     const r = await fetch('/api/onboarding/' + userId);
@@ -2450,10 +2438,10 @@ function onboardingSkip() {
   onboardingSelesai();
 }
 
-
-  // =====================================================================
+// =====================================================================
 // INIT ON LOAD
 // =====================================================================
+
 window.addEventListener('DOMContentLoaded', () => {
     hitungZakatOtomatis();
     muatDataPusat();
@@ -2466,6 +2454,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // AUTO-OPEN TAB DARI URL PARAMETER (?tab=...)
     // ==========================================
+
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
 
@@ -2506,6 +2495,7 @@ function bukaTVConfig() {
 // =====================================================================
 // KELOLA AGENDA MASJID
 // =====================================================================
+
 async function loadAgenda() {
     const listEl = document.getElementById('agenda-list');
     if (!listEl || !currentLembagaId) return;
@@ -2561,6 +2551,14 @@ async function simpanAgenda() {
 }
 
 // Panggil loadAgenda saat tab Lembaga dibuka (tambahkan di fungsi cekStatusLembaga)
+
+
+// === SKRIP PENYELAMAT ===
+window.onerror = function(msg, url, line, col, error) {
+    // Tampilkan popup di layar
+    alert("🔴 ERROR TERDETEKSI!\n\nPesan: " + msg + "\nBaris: " + line + "\nKolom: " + col);
+    return false;
+};
 
 </script>
 </body>
