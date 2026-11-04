@@ -1486,16 +1486,16 @@ def cek_haul_terpenuhi(user_id, tanggal_hari_ini=None):
         )
     }
 
-
 def laporan_tahunan(user_id, harga_emas):
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
     nisab_maal = NISAB_EMAS_GRAM * harga_emas
 
     total_pemasukan = total_pengeluaran = 0
-    total_zakat_tani = total_khumus = 0
+    total_zakat_tani = total_khumus_kotor = 0
     total_bmt_idr = total_benda_mewah = 0
     total_temuan_kotor = 0
 
+    # 1. HITUNG PEMASUKAN & PENGELUARAN DARI JURNAL
     c.execute("""SELECT gaji, honor, hadiah, pertanian_kg, jenis_pengairan,
                         benda_mewah, temuan_laut_karun, simpanan_bmt_idr,
                         pengeluaran_rutin, pengeluaran_sekolah,
@@ -1510,63 +1510,93 @@ def laporan_tahunan(user_id, harga_emas):
         total_bmt_idr += (bmt or 0)
         total_benda_mewah += (mewah or 0)
         total_temuan_kotor += (temuan or 0)
+        
+        # Zakat Tani (jika mencapai nisab)
         if (tani or 0) >= NISAB_PERTANIAN_KG:
             kadar = KADAR_TANAH_ALAMI if pengairan == 'tadah_hujan' else KADAR_TANAH_BIAYA
             total_zakat_tani += (tani * kadar) * HARGA_TANI_PER_KG
+            
+        # Khumus Temuan (Harta Karun)
         if (temuan or 0) > 0:
-            total_khumus += (temuan * KADAR_KHUMUS)
+            total_khumus_kotor += (temuan * KADAR_KHUMUS)
 
-    # Tagihan lunas (mengurangi harta)
+    # 2. TAGIHAN LUNAS
     c.execute("""SELECT COALESCE(SUM(nominal), 0) 
                  FROM tagihan WHERE user_id=? AND status='lunas'""", (user_id,))
     total_tagihan_lunas = c.fetchone()[0] or 0
 
-    # Status pembayaran
-        
-    c.execute("""SELECT status, COALESCE(SUM(nominal), 0) 
-                 FROM rencana_pembayaran WHERE user_id=? GROUP BY status""", (user_id,))
-    pay = {"pending": 0, "dibayar": 0, "diverifikasi": 0, "batal": 0, "ditolak": 0}
-    for status, nominal in c.fetchall():
-        pay[status] = nominal or 0
-    total_pembayaran_dibayar = pay["dibayar"]
-    total_pembayaran_diverifikasi = pay["diverifikasi"]
+    # 3. STATUS PEMBAYARAN (Zakat, Khumus, Infaq)
+    c.execute("""SELECT jenis_kewajiban, status, COALESCE(SUM(nominal), 0) 
+                 FROM rencana_pembayaran WHERE user_id=? GROUP BY jenis_kewajiban, status""", (user_id,))
+    
+    total_pembayaran_dibayar = 0
+    total_pembayaran_diverifikasi = 0
+    zakat_maal_dibayar = 0
+    khumus_dibayar = 0
+    infaq_dibayar = 0
+
+    for jenis, status, nominal in c.fetchall():
+        if status in ('dibayar', 'diverifikasi'):
+            if jenis == 'zakat_maal':
+                zakat_maal_dibayar += nominal
+            elif jenis == 'khumus':
+                khumus_dibayar += nominal
+            elif jenis == 'infaq':
+                infaq_dibayar += nominal
+
+        if status == 'dibayar':
+            total_pembayaran_dibayar += nominal
+        elif status == 'diverifikasi':
+            total_pembayaran_diverifikasi += nominal
+
     total_pembayaran_berkurang = total_pembayaran_dibayar + total_pembayaran_diverifikasi
 
-    # Khumus aktif?
+    # 4. CEK KHUMUS AKTIF
     c.execute("SELECT khumus_aktif FROM users_config WHERE user_id=?", (user_id,))
     row_k = c.fetchone()
     khumus_aktif = bool(row_k[0]) if row_k and row_k[0] is not None else True
+    conn.close()
 
-    # Zakat maal sudah direncanakan
-    c.execute("""SELECT COALESCE(SUM(nominal), 0) FROM rencana_pembayaran
-                 WHERE user_id=? AND jenis_kewajiban='zakat_maal'
-                   AND status IN ('pending','dibayar','diverifikasi')""", (user_id,))
-    zakat_maal_sudah_direncanakan = c.fetchone()[0] or 0
-     
-    # Baca baseline dari database per user
+    # 5. HITUNG HARTA KUMULATIF (Bersih)
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
     c.execute("SELECT baseline_awal FROM users_config WHERE user_id=?", (user_id,))
     row_baseline = c.fetchone()
     baseline_user = row_baseline[0] if row_baseline and row_baseline[0] else BASELINE_AWAL
-    conn.close()                                 
-    harta_kumulatif = max(0, (baseline_user + total_pemasukan) 
-                              - total_pengeluaran 
-                              - total_pembayaran_berkurang 
-                              - total_tagihan_lunas) 
-    zakat_maal_potensial = (harta_kumulatif * KADAR_ZAKAT) if harta_kumulatif >= nisab_maal else 0
+    conn.close()
+
+    # Harta Bersih = (Baseline + Pemasukan) - (Pengeluaran Jurnal + Tagihan Lunas + Semua Pembayaran)
+    # Pemasukan bersih (Pemasukan - Pengeluaran Jurnal)
+    pemasukan_bersih = (baseline_user + total_pemasukan) - total_pengeluaran
+    
+    # Harta kumulatif tidak boleh minus, dan pembayaran (Zakat/Khumus/Infaq) hanya memotong jika pemasukan bersih masih ada
+    harta_kumulatif = max(0, pemasukan_bersih - total_pembayaran_berkurang - total_tagihan_lunas) 
+
+    # 6. HITUNG KEWAJIBAN ZAKAT MAAL
     haul_info = cek_haul_terpenuhi(user_id)
+    zakat_maal_potensial = (harta_kumulatif * KADAR_ZAKAT) if harta_kumulatif >= nisab_maal else 0
     zakat_maal_wajib = zakat_maal_potensial if haul_info["haul_terpenuhi"] else 0
-    total_khumus_final = total_khumus if khumus_aktif else 0
-    zakat_maal_belum_dibayar = max(0, zakat_maal_wajib - zakat_maal_sudah_direncanakan)
+    
+    # Sisa yang harus dibayar = Wajib - Yang sudah dibayar (Zakat saja)
+    zakat_maal_belum_dibayar = max(0, zakat_maal_wajib - zakat_maal_dibayar)
+
+    # 7. HITUNG KEWAJIBAN KHUMUS
+    # Sesuai Fikih: Khumus dihitung dari Harta Kotor (Temuan/Surplus).
+    # Infaq/Sedekah TIDAK mengurangi kewajiban Khumus, melainkan hanya mengurangi Harta Kumulatif.
+    if khumus_aktif:
+        # Khumus Wajib = Total Khumus Kotor - Pembayaran Khumus (jika ada)
+        total_khumus_final = max(0, total_khumus_kotor - khumus_dibayar)
+    else:
+        total_khumus_final = 0
 
     return {
         "total_harta": harta_kumulatif,
         "total_zakat": zakat_maal_wajib + total_zakat_tani,
         "zakat_maal_wajib": zakat_maal_wajib,
         "zakat_maal_potensial": zakat_maal_potensial,
-        "zakat_maal_belum_dibayar": zakat_maal_belum_dibayar,
-        "zakat_maal_sudah_direncanakan": zakat_maal_sudah_direncanakan,
+        "zakat_maal_belum_dibayar": zakat_maal_belum_dibayar, # Ini yang harus ditagihkan
+        "zakat_maal_sudah_direncanakan": zakat_maal_dibayar,
         "zakat_tani": total_zakat_tani,
-        "total_khumus": total_khumus_final,
+        "total_khumus": total_khumus_final, # Ini sisa Khumus
         "khumus_aktif": khumus_aktif,
         "total_temuan_kotor": total_temuan_kotor,
         "haul_terpenuhi": haul_info["haul_terpenuhi"],

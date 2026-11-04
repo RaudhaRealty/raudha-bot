@@ -224,7 +224,7 @@
   <!-- Tombol Aksi Setor -->
   <div class="space-y-3 mt-4">
     <!-- Tombol Zakat (Sembunyi jika tidak wajib) -->
-    <button id="btn-submit-zakat" onclick="prosesSetorZakat()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3">
+    <button id="btn-submit-zakat" onclick="prosesSetorZakat()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 hidden">
       <span class="text-2xl">💰</span>
       <span class="text-left">
         <span class="block text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
@@ -240,7 +240,17 @@
         <span class="block text-[10px] font-normal opacity-90">1/5 dari harta temuan atau surplus</span>
       </span>
     </button>
+
+    <!-- Tombol Infaq/Sedekah (Muncul jika Zakat & Khumus = 0) -->
+    <button id="btn-submit-infaq" onclick="prosesSetorInfaq()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-blue-900/30 transition-all active:scale-95 flex items-center justify-center gap-3">
+      <span class="text-2xl">🤲</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">SALURKAN INFAQ / SEDEKAH</span>
+        <span class="block text-[10px] font-normal opacity-90">Amal jariyah yang mengurangi harta</span>
+      </span>
+    </button>
   </div>
+
 </div> <!-- ✅ JANGAN LUPA: Ini penutup div id="tab-zakat" -->
 
   <!-- ==================== TAB 2: BMT ==================== -->
@@ -891,6 +901,7 @@ async function downloadPDF() {
 
 // ===== USER ID (versi debug) =====
 let userId = 123456789;
+let isProcessing = false; // Pengaman agar UI tidak bentrok
 
 // ===== TELEGRAM AUTH (Batch 15) =====
 
@@ -1005,6 +1016,7 @@ console.log('[DEBUG] userId final:', window.userId);
   // =====================================================================
 
   function hitungZakatOtomatis() {
+  if (isProcessing) return; // Jangan hitung jika sedang proses setor  
     const gaji = bacaInputAman('f-gaji');
     const hadiah = bacaInputAman('f-hadiah');
     const tani = bacaInputAman('f-tani');
@@ -1036,6 +1048,32 @@ console.log('[DEBUG] userId final:', window.userId);
     document.getElementById('total-harta').innerText = formatRupiah(totalHarta);
     document.getElementById('est-zakat').innerText = formatRupiah(zakatMaal + zakatTani);
     document.getElementById('est-khumus').innerText = formatRupiah(khumusTemuan + khumusSurplus);
+  
+       // --- LOGIKA TAMPILKAN/SEMBUNYIKAN TOMBOL ---
+    const btnZakat = document.getElementById('btn-submit-zakat');
+    const btnKhumus = document.getElementById('btn-submit-khumus');
+    const btnInfaq = document.getElementById('btn-submit-infaq');
+    
+    const totalKhumusFinal = khumusTemuan + khumusSurplus;
+    const totalZakatFinal = zakatMaal + zakatTani;
+
+    // 1. Tombol Zakat: Muncul jika Zakat > 0 (Haul terpenuhi)
+    if (btnZakat) {
+        if (totalZakatFinal > 0) btnZakat.classList.remove('hidden');
+        else btnZakat.classList.add('hidden');
+    }
+    
+    // 2. Tombol Khumus: Muncul jika Khumus > 0
+    if (btnKhumus) {
+        if (totalKhumusFinal > 0) btnKhumus.classList.remove('hidden');
+        else btnKhumus.classList.add('hidden');
+    }
+
+    // 3. Tombol Infaq: SELALU MUNCUL (untuk beramal kapan saja)
+    if (btnInfaq) {
+        btnInfaq.classList.remove('hidden');
+    }
+
   }
 
   // =====================================================================
@@ -1282,6 +1320,24 @@ function switchSubTabZakat(name) {
       if (textEl) textEl.textContent = 'SETOR ZAKAT SEKARANG';
     });
   } // <-- Pastikan kurung kurawal penutup fungsi ada di sini
+
+  function prosesSetorZakat() {
+    const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
+    if (zakatNum <= 0) {
+        alert('Tidak ada zakat yang wajib disetor saat ini (haul belum terpenuhi).');
+        return;
+    }
+    mulaiSetor('zakat_maal', zakatNum);
+  }
+
+  function prosesSetorKhumus() {
+    const khumusNum = parseInt(document.getElementById('est-khumus').innerText.replace(/[^0-9]/g, '')) || 0;
+    if (khumusNum <= 0) {
+        alert('Tidak ada khumus yang wajib disetor saat ini.');
+        return;
+    }
+    mulaiSetor('khumus', khumusNum);
+  }  
 
    function kirimKeBot(data, sisa) {
     const status = document.getElementById('overlay-status');
@@ -1945,6 +2001,19 @@ async function prosesSetor() {
     // 3. Sukses
     tutupModalKonfirmasi();
     
+    // Cek apakah ini Infaq? Jika ya, jangan tutup aplikasi!
+    if (setorState.jenis === 'infaq') {
+        alert('✅ Infaq berhasil disalurkan ke ' + setorState.lembagaNama + '.\n\nTerima kasih atas amal jariyah Anda. Aplikasi tidak akan ditutup agar Anda bisa melanjutkan membayar Khumus/Zakat.');
+        
+        // Refresh data agar total harta & sisa khumus langsung berubah
+        hitungZakatOtomatis();
+        muatDataPusat();
+        
+        // JANGAN panggil kirimKeBot atau tutupAplikasi!
+        return; 
+    }
+    
+    // --- Jika BUKAN Infaq (Berarti Zakat atau Khumus) ---
     document.getElementById('overlay-zakat').innerText = formatRupiah(setorState.jenis === 'khumus' ? 0 : setorState.nominal);
     document.getElementById('overlay-khumus').innerText = formatRupiah(setorState.jenis === 'khumus' ? setorState.nominal : 0);
     document.getElementById('success-overlay').style.display = 'flex';
@@ -2448,6 +2517,53 @@ async function hapusTagihan(id) {
   } catch (e) {
     alert('❌ ' + e.message);
   }
+}
+
+async function prosesSetorInfaq() {
+    const input = prompt("Masukkan nominal Infaq/Sedekah (Rp):\n\nCatatan: Nominal ini akan mengurangi Total Harta Anda.", "100000");
+    if (!input) return;
+    
+    const nominal = parseFloat(input);
+    if (isNaN(nominal) || nominal <= 0) {
+        alert("⚠️ Nominal tidak valid.");
+        return;
+    }
+
+    // 1. Kunci UI agar tidak bentrok dengan hitungZakatOtomatis
+    isProcessing = true; 
+    
+    try {
+        // 2. Simpan Infaq ke database sebagai pengeluaran
+        const r = await fetch('/api/input/syariah', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: userId,
+                jenis: 'infaq_web',
+                pengeluaran_sedekah: nominal,
+            })
+        });
+        const d = await r.json();
+        
+        if (d.status === 'success') {
+            // 3. Tarik data terbaru dari server (agar Harta tidak jadi 0)
+            await muatDataPusat(); 
+            
+            // 4. Buka modal pilih lembaga
+            setTimeout(() => {
+                mulaiSetor('infaq', nominal);
+                // 5. Buka kunci UI SETELAH modal terbuka
+                isProcessing = false; 
+            }, 500);
+            
+        } else {
+            isProcessing = false;
+            alert('❌ Gagal: ' + d.message);
+        }
+    } catch (e) {
+        isProcessing = false;
+        alert('❌ Error: ' + e.message);
+    }
 }
 
 function bukaUploadBukti(id) {
