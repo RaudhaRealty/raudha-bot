@@ -1,6 +1,37 @@
+# ==== Python ====
 venv/
 __pycache__/
 *.pyc
+*.pyo
+
+# ==== Environment ====
 .env
 subscribers.json
+
+# ==== Assets static ====
 gambar/arsitektur/*.jpg
+
+# ==== Binary tools (JANGAN COMMIT!) ====
+cloudflared.exe
+ngrok.exe
+
+# ==== Database & Backup ====
+data/raudha.db
+*.db
+*.db.bak
+backups/
+backups_weekly/
+
+# ==== Uploads (user content) ====
+uploads/
+data_kesehatan/
+data_doa/
+
+# ==== Logs ====
+*.log
+
+# ==== OS & IDE ====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
