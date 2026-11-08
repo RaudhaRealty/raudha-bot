@@ -19,8 +19,11 @@ ngrok.exe
 data/raudha.db
 *.db
 *.db.bak
+*.db.bak_*
 backups/
 backups_weekly/
+backup_*/
+data/*.bak*
 
 # ==== Uploads (user content) ====
 uploads/
