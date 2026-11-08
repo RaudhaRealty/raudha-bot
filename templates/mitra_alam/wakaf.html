@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wakaf {{ kom.nama_display }} — Raudha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0fdf4; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800 pb-32">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white rounded-b-3xl shadow-xl sticky top-0 z-40">
+        <div class="max-w-md mx-auto px-4 py-5">
+            <div class="flex items-center gap-3">
+                <button onclick="history.back()" 
+                        class="bg-white/20 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+                    <span class="text-lg">⬅️</span>
+                </button>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-widest font-bold">Form Wakaf Pohon</p>
+                    <h1 class="text-lg font-black leading-tight">{{ kom.nama_display }}</h1>
+                </div>
+                <div class="text-4xl">
+                    {% if 'kurma' in kom.kode %}🌴
+                    {% elif 'kopi' in kom.kode %}☕
+                    {% elif 'jati' in kom.kode %}🪵
+                    {% elif 'balsa' in kom.kode %}🪓
+                    {% elif 'aren' in kom.kode %}🌾
+                    {% else %}🌱{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO KOMODITAS -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                    <p class="text-slate-400 text-[10px] uppercase font-bold">Harga/Pohon</p>
+                    <p class="text-emerald-700 font-black text-base">Rp {{ "{:,.0f}".format(kom.harga_pohon).replace(",", ".") }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-[10px] uppercase font-bold">Panen</p>
+                    <p class="text-slate-800 font-bold text-sm">{{ kom.siklus_panen }}</p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold">Output</p>
+                    <p class="text-slate-800 font-bold text-sm">🌾 {{ kom.output }}</p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold">Nilai Ekonomi</p>
+                    <p class="text-slate-800 font-bold text-sm">💵 {{ kom.nilai_ekonomi }}</p>
+                </div>
+            </div>
+            {% if kom.deskripsi %}
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <p class="text-[11px] text-slate-600 leading-relaxed">{{ kom.deskripsi }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- FORM -->
+    <div class="max-w-md mx-auto px-4 mt-4 space-y-4">
+
+        <!-- Jumlah Pohon -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-3">
+                🌳 Jumlah Pohon
+            </label>
+            <div class="flex items-center gap-3">
+                <button onclick="ubahJumlah(-1)" 
+                        class="w-12 h-12 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-xl text-slate-700 transition">
+                    −
+                </button>
+                <input type="number" id="jumlah" value="1" min="1" max="100"
+                       onchange="hitungTotal()"
+                       class="flex-1 text-center text-2xl font-black text-emerald-700 bg-emerald-50 border-2 border-emerald-200 rounded-xl py-3 outline-none focus:border-emerald-500">
+                <button onclick="ubahJumlah(1)" 
+                        class="w-12 h-12 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-black text-xl text-white transition">
+                    +
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400 text-center mt-2">Maksimal 100 pohon per transaksi</p>
+        </div>
+
+        <!-- Pilih Lahan -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-3">
+                📍 Lokasi Penanaman
+            </label>
+            <select id="lembaga_id" onchange="hitungTotal()"
+                    class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-medium">
+                <option value="">— Pilih Masjid/Pesantren —</option>
+                {% for l in lembaga_list %}
+                <option value="{{ l[0] }}">{{ l[1] }}{% if l[2] %} — {{ l[2] }}{% endif %}</option>
+                {% endfor %}
+            </select>
+            <p class="text-[10px] text-slate-400 mt-2">
+                🌿 Pohon akan ditanam di lahan wakaf masjid/pesantren terpilih
+            </p>
+        </div>
+
+        <!-- Nama Muwakif -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-3">
+                👤 Nama Muwakif <span class="text-slate-400 font-normal normal-case">(akan tampil di halaman pohon)</span>
+            </label>
+            <input type="text" id="nama_muwakif" maxlength="100"
+                   placeholder="Contoh: Ahmad bin Abdullah / Untuk almarhum H. Ahmad"
+                   class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm">
+            <p class="text-[10px] text-slate-400 mt-1">Boleh nama sendiri, keluarga, atau almarhum yang diwakilkan</p>
+        </div>
+
+        <!-- Doa / Hajat -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-3">
+                🤲 Doa / Hajat <span class="text-slate-400 font-normal normal-case">(opsional)</span>
+            </label>
+            <textarea id="doa" rows="3" maxlength="300"
+                      placeholder="Contoh: Untuk almarhumah ibu saya, semoga amal jariyahnya mengalir..."
+                      class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm resize-none"></textarea>
+            <p class="text-[10px] text-slate-400 mt-1">Akan tertera di sertifikat wakaf</p>
+        </div>
+
+        <!-- Ringkasan Total -->
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 shadow-lg text-white">
+            <p class="text-[10px] text-emerald-100 uppercase font-bold mb-1">Total Wakaf</p>
+            <p id="total_display" class="text-3xl font-black">Rp 0</p>
+            <p id="rincian" class="text-[11px] text-emerald-100 mt-2">0 pohon × Rp 0</p>
+        </div>
+
+        <!-- Info Bagi Hasil -->
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <div class="flex items-start gap-2">
+                <span class="text-lg">💡</span>
+                <p class="text-[11px] text-amber-800 leading-relaxed">
+                    <b>Skema Bagi Hasil:</b> 70% Masjid • 20% Perawatan • 10% Pengelolaan.
+                    Muwakif <b>tidak menerima</b> hasil panen — pahala jariyah yang mengalir.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM BAR (Sticky) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-2xl z-50">
+        <div class="max-w-md mx-auto px-4 py-3">
+            <button onclick="submitWakaf()" id="btn_submit"
+                    class="w-full bg-emerald-600 text-white font-black py-4 rounded-xl text-sm hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
+                🤲 Lanjut ke Pembayaran
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const HARGA = {{ kom.harga_pohon }};
+        const KOMODITAS_ID = {{ kom.id }};
+        const USER_ID = tg?.initDataUnsafe?.user?.id || {{ request.args.get('user_id', 'null') }};
+
+        function ubahJumlah(delta) {
+            const input = document.getElementById('jumlah');
+            let v = parseInt(input.value) || 1;
+            v = Math.max(1, Math.min(100, v + delta));
+            input.value = v;
+            hitungTotal();
+            if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+
+        function hitungTotal() {
+            const jumlah = parseInt(document.getElementById('jumlah').value) || 1;
+            const total = HARGA * jumlah;
+            document.getElementById('total_display').textContent = 
+                'Rp ' + total.toLocaleString('id-ID');
+            document.getElementById('rincian').textContent = 
+                `${jumlah} pohon × Rp ${HARGA.toLocaleString('id-ID')}`;
+        }
+
+async function submitWakaf() {
+    const btn = document.getElementById('btn_submit');
+    const jumlahInput = document.getElementById('jumlah');
+    const lembagaSelect = document.getElementById('lembaga_id');
+    const doaInput = document.getElementById('doa');
+    const namaInput = document.getElementById('nama_muwakif');  // ← BARU
+    
+    const jumlah = parseInt(jumlahInput.value) || 1;
+    const lembaga_id = lembagaSelect.value;
+    const doa = doaInput.value.trim();
+    const nama_muwakif = namaInput ? namaInput.value.trim() : '';  // ← BARU
+
+    // VALIDASI — return early, tidak sentuh tombol
+    if (!USER_ID) {
+        alert('⚠️ Anda harus membuka dari Telegram Mini App.\n\nBuka lewat bot Telegram → Mitra Alam → Wakaf Produktif Tanaman.');
+        return;
+    }
+    if (!lembaga_id) {
+        alert('⚠️ Silakan pilih lokasi penanaman terlebih dahulu.\n\nKetuk dropdown "📍 Lokasi Penanaman" dan pilih masjid/pesantren.');
+        lembagaSelect.focus();
+        lembagaSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    if (jumlah < 1 || jumlah > 100) {
+        alert('⚠️ Jumlah harus 1-100 pohon.');
+        return;
+    }
+    
+    // Setelah valid, baru disable tombol
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Menyimpan...';
+    
+    try {
+        const res = await fetch('/api/mitra-alam/wakaf/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: USER_ID,
+                komoditas_id: KOMODITAS_ID,
+                jumlah: jumlah,
+                lembaga_id: parseInt(lembaga_id),
+                doa: doa,
+                nama_muwakif: nama_muwakif,  // ← BARU
+            }),
+        });
+        
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            throw new Error('Server tidak mengembalikan JSON valid (HTTP ' + res.status + ')');
+        }
+        
+        if (data.status === 'success') {
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            // Redirect langsung ke halaman pembayaran
+            window.location.href = `/mitra-alam/pembayaran/${data.rencana_id}`;
+        } else {
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+            alert('❌ ' + (data.message || 'Gagal menyimpan'));
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    } catch (e) {
+        console.error('Submit error:', e);
+        alert('❌ Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+        // Init
+        hitungTotal();
+    </script>
+</body>
+</html>

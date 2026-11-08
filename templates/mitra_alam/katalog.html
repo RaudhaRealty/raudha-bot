@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wakaf Produktif Tanaman — Raudha Mitra Alam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0fdf4; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(16, 185, 129, 0.15); }
+        .hero-pattern {
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 50%);
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800 pb-24">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white rounded-b-3xl shadow-xl sticky top-0 z-40 hero-pattern">
+        <div class="max-w-md mx-auto px-4 py-5">
+            <div class="flex items-center gap-3 mb-3">
+                <button onclick="window.Telegram?.WebApp?.close() || history.back()" 
+                        class="bg-white/20 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+                    <span class="text-lg">⬅️</span>
+                </button>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-widest font-bold">Mitra Alam Raudha</p>
+                    <h1 class="text-lg font-black leading-tight">Wakaf Produktif Tanaman</h1>
+                </div>
+                <div class="text-4xl">🌳</div>
+            </div>
+            <p class="text-xs text-emerald-100 leading-relaxed">
+                Jadikan halaman ini menjadi taman wasiat. Setiap pohon dipantau via NFC, 
+                hasil panen kembali untuk ummat.
+            </p>
+        </div>
+    </div>
+
+    <!-- STATISTIK GLOBAL -->
+    <div class="max-w-md mx-auto px-4 -mt-4">
+        <div class="grid grid-cols-3 gap-2">
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Pohon</p>
+                <p class="text-xl font-black text-emerald-700 mt-0.5">{{ stats.total_pohon }}</p>
+            </div>
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Muwakif</p>
+                <p class="text-xl font-black text-emerald-700 mt-0.5">{{ stats.total_muwakif }}</p>
+            </div>
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Lahan</p>
+                <p class="text-xl font-black text-emerald-700 mt-0.5">{{ stats.total_lahan }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO CARD -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-4">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">💡</span>
+                <div>
+                    <p class="text-xs font-bold text-amber-900 mb-1">Skema Bagi Hasil Panen</p>
+                    <p class="text-[11px] text-amber-800 leading-relaxed">
+                        <b>70%</b> Masjid/Pesantren • <b>20%</b> Perawatan • <b>10%</b> Pengelolaan Raudha
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DAFTAR KOMODITAS -->
+    <div class="max-w-md mx-auto px-4 mt-6">
+        <h2 class="text-base font-black text-slate-800 mb-3 flex items-center gap-2">
+            <span class="bg-emerald-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs">🌱</span>
+            Pilih Komoditas Wakaf
+        </h2>
+
+        {% if komoditas %}
+            <div class="space-y-3">
+                {% for k in komoditas %}
+                <div class="card-hover bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                     onclick="pilihKomoditas({{ k.id }}, '{{ k.nama_display }}', {{ k.harga_pohon }})">
+                    <div class="flex">
+                        <!-- Icon Area -->
+                        <div class="w-20 bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                            {% if 'kurma' in k.kode %}
+                                <span class="text-4xl">🌴</span>
+                            {% elif 'kopi' in k.kode %}
+                                <span class="text-4xl">☕</span>
+                            {% elif 'jati' in k.kode %}
+                                <span class="text-4xl">🪵</span>
+                            {% elif 'balsa' in k.kode %}
+                                <span class="text-4xl">🪓</span>
+                            {% elif 'aren' in k.kode %}
+                                <span class="text-4xl">🌾</span>
+                            {% else %}
+                                <span class="text-4xl">🌱</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Content -->
+                        <div class="p-3 flex-1 min-w-0">
+                            <div class="flex justify-between items-start gap-2">
+                                <h3 class="font-black text-sm text-slate-900 leading-tight">{{ k.nama_display }}</h3>
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    Rp {{ "{:,.0f}".format(k.harga_pohon).replace(",", ".") }}
+                                </span>
+                            </div>
+
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                    <span>🌾</span>
+                                    <span class="truncate">{{ k.output }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                    <span>⏱️</span>
+                                    <span class="truncate">Panen: {{ k.siklus_panen }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                                    <span>💵</span>
+                                    <span class="truncate">{{ k.nilai_ekonomi }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-teal-600">
+                                    <span>🌿</span>
+                                    <span class="truncate">{{ k.fungsi_ekologis }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-[10px] text-slate-400 font-medium">Klik untuk wakaf ➡️</span>
+                                <span class="bg-emerald-600 text-white text-[10px] font-black px-3 py-1 rounded-full">
+                                    WAKAF
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-100">
+                <div class="text-5xl mb-3">🌱</div>
+                <p class="text-sm font-bold text-slate-700">Belum ada komoditas aktif</p>
+                <p class="text-xs text-slate-400 mt-1">Tim Raudha akan segera menambahkan komoditas baru</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- INFO LAHAN TERSEDIA -->
+    <div class="max-w-md mx-auto px-4 mt-6">
+        <h2 class="text-base font-black text-slate-800 mb-3 flex items-center gap-2">
+            <span class="bg-amber-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs">📍</span>
+            Lahan Tersedia
+        </h2>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            {% if lembaga_list %}
+                <p class="text-[11px] text-slate-500 mb-3">Pohon akan ditanam di lahan berikut:</p>
+                <div class="space-y-2">
+                    {% for l in lembaga_list %}
+                    <div class="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
+                        <span class="text-lg">🕌</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-800 truncate">{{ l.1 }}</p>
+                            {% if l.2 %}
+                            <p class="text-[10px] text-slate-400 truncate">{{ l.2 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-xs text-slate-400 text-center py-3">Belum ada lahan terdaftar</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- FOOTER INFO -->
+    <div class="max-w-md mx-auto px-4 mt-6 text-center">
+        <p class="text-[10px] text-slate-400 leading-relaxed">
+            🌱 <b>Raudha Mitra Alam</b><br>
+            Wakaf Produktif Berbasis Teknologi NFC<br>
+            <span class="text-emerald-600 font-bold">raudha.id/mitra-alam</span>
+        </p>
+    </div>
+
+    <!-- BOTTOM BAR (Sticky) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-2xl z-50">
+        <div class="max-w-md mx-auto px-4 py-3 flex gap-2">
+            <button onclick="window.Telegram?.WebApp?.close() || history.back()"
+                    class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl text-sm hover:bg-slate-200 transition">
+                ⬅️ Kembali
+            </button>
+            <button onclick="scrollToKatalog()"
+                    class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30">
+                🌳 Pilih Pohon
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        function pilihKomoditas(id, nama, harga) {
+            // Redirect ke form wakaf
+            window.location.href = `/mitra-alam/wakaf?komoditas=${id}`;
+            
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        function scrollToKatalog() {
+            const katalog = document.querySelector('h2');
+            if (katalog) katalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+</html>

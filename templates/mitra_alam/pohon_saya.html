@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pohon Saya — Raudha Mitra Alam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="antialiased text-slate-800 pb-24">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white rounded-b-3xl shadow-xl sticky top-0 z-40 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <svg width="100%" height="100%" viewBox="0 0 400 200">
+                <circle cx="350" cy="50" r="80" fill="white"/>
+                <circle cx="50" cy="180" r="60" fill="white"/>
+            </svg>
+        </div>
+        
+        <div class="max-w-md mx-auto px-4 py-5 relative">
+            <div class="flex items-center gap-3 mb-3">
+                <button onclick="location.href='/mitra-alam/katalog'" 
+                        class="bg-white/20 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+                    <span class="text-lg">⬅️</span>
+                </button>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-widest font-bold">Mitra Alam</p>
+                    <h1 class="text-lg font-black leading-tight">Pohon Saya 🌳</h1>
+                </div>
+                <div class="text-4xl">🌱</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTIK -->
+    <div class="max-w-md mx-auto px-4 -mt-4">
+        <div class="grid grid-cols-3 gap-2" id="stats_grid">
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Pohon</p>
+                <p class="text-xl font-black text-emerald-700 mt-0.5" id="stat_total">—</p>
+            </div>
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Aktif</p>
+                <p class="text-xl font-black text-emerald-700 mt-0.5" id="stat_aktif">—</p>
+            </div>
+            <div class="bg-white rounded-2xl p-3 shadow-md border border-emerald-100 text-center">
+                <p class="text-[9px] text-slate-400 font-bold uppercase">Wakaf</p>
+                <p class="text-sm font-black text-amber-600 mt-0.5" id="stat_nilai">—</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING -->
+    <div id="loading" class="max-w-md mx-auto px-4 mt-6 text-center">
+        <div class="text-4xl mb-2">⏳</div>
+        <p class="text-sm text-slate-500">Memuat pohon Anda...</p>
+    </div>
+
+    <!-- ERROR -->
+    <div id="error_box" class="hidden max-w-md mx-auto px-4 mt-6">
+        <div class="bg-red-50 border border-red-300 rounded-2xl p-4 text-center">
+            <div class="text-4xl mb-2">⚠️</div>
+            <p class="text-sm font-bold text-red-900" id="error_msg">Error</p>
+        </div>
+    </div>
+
+    <!-- LIST POHON -->
+    <div id="list_pohon" class="max-w-md mx-auto px-4 mt-4 space-y-3 hidden"></div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty_state" class="hidden max-w-md mx-auto px-4 mt-6">
+        <div class="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-100">
+            <div class="text-6xl mb-3">🌱</div>
+            <p class="text-base font-black text-slate-800 mb-1">Belum ada pohon</p>
+            <p class="text-xs text-slate-500 mb-4">Wakafkan pohon pertama Anda dan mulai amal jariyah.</p>
+            <a href="/mitra-alam/katalog" 
+               class="inline-block bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl text-sm hover:bg-emerald-700">
+                🌳 Lihat Katalog
+            </a>
+        </div>
+    </div>
+
+    <!-- CTA -->
+    <div id="cta_box" class="hidden max-w-md mx-auto px-4 mt-4 mb-6">
+        <a href="/mitra-alam/katalog"
+           class="block bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 text-center hover:from-emerald-700 hover:to-teal-800 transition shadow-lg">
+            <p class="text-sm font-black">🌱 Wakaf Pohon Lagi</p>
+            <p class="text-[11px] text-emerald-100 mt-0.5">Tambah amal jariyah Anda</p>
+        </a>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="max-w-md mx-auto px-4 text-center pb-4">
+        <p class="text-[10px] text-slate-400">
+            🌱 <b>Raudha Mitra Alam</b> — Wakaf Produktif Berbasis NFC
+        </p>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const USER_ID = tg?.initDataUnsafe?.user?.id;
+
+        async function loadPohon() {
+            if (!USER_ID) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error_box').classList.remove('hidden');
+                document.getElementById('error_msg').textContent = 'Buka dari Telegram Mini App';
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/mitra-alam/pohon-saya/${USER_ID}`);
+                const data = await res.json();
+                
+                if (data.status !== 'success') {
+                    throw new Error(data.message || 'Gagal memuat');
+                }
+                
+                document.getElementById('loading').classList.add('hidden');
+                
+                // Update statistik
+                const stats = data.stats;
+                document.getElementById('stat_total').textContent = stats.total_pohon;
+                document.getElementById('stat_aktif').textContent = stats.total_aktif;
+                const nilaiJuta = (stats.total_nilai / 1000).toFixed(0);
+                document.getElementById('stat_nilai').textContent = nilaiJuta + 'rb';
+                
+                if (!data.pohon || data.pohon.length === 0) {
+                    document.getElementById('empty_state').classList.remove('hidden');
+                    return;
+                }
+                
+                // Render list
+                const list = document.getElementById('list_pohon');
+                list.classList.remove('hidden');
+                list.innerHTML = data.pohon.map(p => renderPohonCard(p)).join('');
+                
+                document.getElementById('cta_box').classList.remove('hidden');
+            } catch (e) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error_box').classList.remove('hidden');
+                document.getElementById('error_msg').textContent = e.message;
+            }
+        }
+
+        function renderPohonCard(p) {
+            const iconMap = {
+                'kurma': '🌴', 'kopi': '☕', 'jati': '🪵', 
+                'balsa': '🪓', 'aren': '🌾'
+            };
+            let icon = '🌱';
+            for (const key in iconMap) {
+                if (p.komoditas_nama && p.komoditas_nama.toLowerCase().includes(key)) {
+                    icon = iconMap[key];
+                    break;
+                }
+            }
+            
+            const statusBadge = {
+                'aktif': { label: 'Aktif', bg: 'bg-emerald-100 text-emerald-800' },
+                'menunggu_tanam': { label: 'Menunggu Tanam', bg: 'bg-amber-100 text-amber-800' },
+                'dipanen': { label: 'Dipanen', bg: 'bg-blue-100 text-blue-800' },
+                'mati': { label: 'Mati', bg: 'bg-slate-200 text-slate-600' },
+            }[p.status] || { label: p.status, bg: 'bg-slate-100 text-slate-600' };
+            
+            const tanggal = (p.tanggal_tanam || '').split('-');
+            const tanggalStr = tanggal.length === 3 ? 
+                `${tanggal[2]} ${getBulan(parseInt(tanggal[1]))} ${tanggal[0]}` : p.tanggal_tanam;
+            
+            const fotoHtml = p.foto_terakhir ? `
+                <div class="rounded-xl overflow-hidden border border-slate-200 mb-2 bg-slate-50">
+                    <img src="${p.foto_terakhir}?ngrok-skip-browser-warning=true" 
+                         alt="Foto pohon" 
+                         class="w-full h-32 object-cover"
+                         onerror="this.style.display='none'">
+                </div>
+            ` : '';
+            
+            const tinggiHtml = p.tinggi_terakhir ? 
+                `<span class="text-[10px] text-emerald-700 font-bold">📏 ${p.tinggi_terakhir}</span>` : '';
+            
+            return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                     onclick="location.href='/pohon/${p.nfc_uid}'">
+                    <div class="p-4">
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="text-3xl flex-shrink-0">${icon}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-black text-slate-800 text-sm leading-tight">${p.komoditas_nama} <span class="text-slate-400 font-normal">#${p.id}</span></p>
+                                        <p class="text-[10px] text-slate-500 truncate">📍 ${p.lembaga_nama}</p>
+                                    </div>
+                                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${statusBadge.bg} whitespace-nowrap">
+                                        ${statusBadge.label}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${fotoHtml}
+                        
+                        <div class="flex items-center justify-between text-[10px] text-slate-500 mt-2">
+                            <span>📅 ${tanggalStr}</span>
+                            ${tinggiHtml}
+                            <span>📸 ${p.jumlah_log} log</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400 font-mono">${p.nfc_uid}</span>
+                        <span class="text-[10px] text-emerald-600 font-bold">Lihat Detail →</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getBulan(n) {
+            return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
+                    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][n] || '';
+        }
+
+        loadPohon();
+    </script>
+</body>
+</html>

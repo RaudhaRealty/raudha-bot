@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Verifikasi Wakaf — Admin Raudha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="antialiased text-slate-800 pb-24">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white rounded-b-3xl shadow-xl sticky top-0 z-40">
+        <div class="max-w-md mx-auto px-4 py-5">
+            <div class="flex items-center gap-3">
+                <button onclick="history.back()" 
+                        class="bg-white/20 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+                    <span class="text-lg">⬅️</span>
+                </button>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-widest font-bold">Admin Panel</p>
+                    <h1 class="text-lg font-black leading-tight">Verifikasi Wakaf</h1>
+                </div>
+                <div class="text-4xl">✅</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3 text-xs text-blue-800">
+            💡 Pilih pembayaran yang <b>sudah ditransfer</b>, lihat bukti, lalu verifikasi. 
+            Setelah verifikasi, pohon otomatis aktif & user dapat notifikasi.
+        </div>
+    </div>
+
+    <!-- MODE INFO -->
+    <div id="mode_info" class="max-w-md mx-auto px-4 mt-4"></div>
+
+    <!-- FILTER TABS -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-1 shadow-sm border border-slate-100 flex">
+            <button onclick="filterTab('dibayar')" id="tab_dibayar"
+                    class="flex-1 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white transition">
+                📤 Perlu Verifikasi
+            </button>
+            <button onclick="filterTab('diverifikasi')" id="tab_diverifikasi"
+                    class="flex-1 py-2 rounded-xl text-sm font-bold text-slate-600 transition">
+                ✅ Terverifikasi
+            </button>
+        </div>
+    </div>
+
+    <!-- LOADING -->
+    <div id="loading" class="max-w-md mx-auto px-4 mt-6 text-center">
+        <div class="text-4xl mb-2">⏳</div>
+        <p class="text-sm text-slate-500">Memuat data...</p>
+    </div>
+
+    <!-- LIST PEMBAYARAN -->
+    <div id="list_pembayaran" class="max-w-md mx-auto px-4 mt-4 space-y-3 hidden"></div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty_state" class="max-w-md mx-auto px-4 mt-6 text-center hidden">
+        <div class="text-5xl mb-3">📭</div>
+        <p class="text-sm font-bold text-slate-700">Tidak ada pembayaran</p>
+        <p class="text-xs text-slate-400 mt-1">Belum ada pembayaran yang perlu diverifikasi.</p>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const USER_ID = tg?.initDataUnsafe?.user?.id;
+        let LEMBAGA_ID = null;
+        let IS_SUPER_ADMIN = false;
+        let VERIFICATION_MODE = 'super_only';
+        let allPembayaran = [];
+        let currentTab = 'dibayar';
+
+        async function loadData() {
+            if (!USER_ID) {
+                document.getElementById('loading').innerHTML = 
+                    '<div class="text-5xl mb-2">⚠️</div><p class="text-sm text-red-600 font-bold">Buka dari Telegram Mini App</p>';
+                return;
+            }
+            
+            try {
+                // STEP 1: Dapatkan role & lembaga
+                if (LEMBAGA_ID === null && !IS_SUPER_ADMIN) {
+                    const lembagaRes = await fetch(`/api/mitra-alam/admin/lembaga-saya/${USER_ID}`);
+                    const lembagaData = await lembagaRes.json();
+                    
+                    if (lembagaData.status === 'success') {
+                        LEMBAGA_ID = lembagaData.lembaga_id;
+                        IS_SUPER_ADMIN = lembagaData.is_super_admin;
+                    } else {
+                        document.getElementById('loading').innerHTML = 
+                            `<div class="text-5xl mb-2">❌</div><p class="text-sm text-red-600">${lembagaData.message || 'Akses ditolak'}</p>`;
+                        return;
+                    }
+                }
+                
+                // STEP 2: Load daftar pembayaran
+                const url = IS_SUPER_ADMIN 
+                    ? `/api/mitra-alam/pembayaran/list/all?user_id=${USER_ID}`
+                    : `/api/mitra-alam/pembayaran/list/${LEMBAGA_ID}?user_id=${USER_ID}`;
+                
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    allPembayaran = data.pembayaran || [];
+                    VERIFICATION_MODE = data.verification_mode || 'super_only';
+                    document.getElementById('loading').classList.add('hidden');
+                    
+                    // Tampilkan info mode kalau multi_admin atau kalau user bukan super & mode super_only
+                    renderModeInfo();
+                    renderList();
+                } else {
+                    document.getElementById('loading').innerHTML = 
+                        `<div class="text-5xl mb-2">❌</div><p class="text-sm text-red-600">${data.message || 'Gagal memuat'}</p>`;
+                }
+            } catch (e) {
+                document.getElementById('loading').innerHTML = 
+                    `<div class="text-5xl mb-2">❌</div><p class="text-sm text-red-600">${e.message}</p>`;
+            }
+        }
+
+        function renderModeInfo() {
+            const infoBox = document.getElementById('mode_info');
+            if (!infoBox) return;
+            
+            if (IS_SUPER_ADMIN) {
+                // Super admin: selalu bisa
+                const label = VERIFICATION_MODE === 'super_only' 
+                    ? '🔒 Mode: Super Admin Only' 
+                    : '🌐 Mode: Multi Admin';
+                infoBox.innerHTML = `
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-800">
+                        <b>${label}</b> — Anda dapat verifikasi semua transaksi.
+                    </div>
+                `;
+            } else if (VERIFICATION_MODE === 'super_only') {
+                infoBox.innerHTML = `
+                    <div class="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-amber-800">
+                        <b>🔒 Mode: Super Admin Only</b><br>
+                        Verifikasi saat ini hanya oleh Super Admin. 
+                        Anda dapat melihat daftar, tetapi belum bisa verifikasi.
+                    </div>
+                `;
+            } else {
+                infoBox.innerHTML = `
+                    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3 text-xs text-blue-800">
+                        <b>🌐 Mode: Multi Admin</b> — Anda dapat verifikasi pembayaran lembaga Anda.
+                    </div>
+                `;
+            }
+        }
+
+        function filterTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab_dibayar').className = 
+                'flex-1 py-2 rounded-xl text-sm font-bold transition ' + 
+                (tab === 'dibayar' ? 'bg-emerald-600 text-white' : 'text-slate-600');
+            document.getElementById('tab_diverifikasi').className = 
+                'flex-1 py-2 rounded-xl text-sm font-bold transition ' + 
+                (tab === 'diverifikasi' ? 'bg-emerald-600 text-white' : 'text-slate-600');
+            renderList();
+        }
+
+        function renderList() {
+            const list = document.getElementById('list_pembayaran');
+            const empty = document.getElementById('empty_state');
+            
+            const filtered = allPembayaran.filter(p => p.status === currentTab);
+            
+            if (filtered.length === 0) {
+                list.classList.add('hidden');
+                empty.classList.remove('hidden');
+                empty.querySelector('p').textContent = 
+                    currentTab === 'dibayar' ? 'Tidak ada yang perlu diverifikasi' : 'Belum ada yang terverifikasi';
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+            
+            list.innerHTML = filtered.map(p => {
+                const nominalStr = 'Rp ' + Math.round(p.nominal).toLocaleString('id-ID');
+                const tanggal = (p.created_at || '').split(' ')[0];
+                const nama = p.nama_lengkap || `User #${p.user_id}`;
+                const wa = p.no_whatsapp || '-';
+                const lembaga = p.lembaga_nama || '-';
+                
+                const isImage = (p.bukti_url_ngrok || '').toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)/);
+                
+                // Cek apakah user ini boleh verifikasi
+                const canVerify = IS_SUPER_ADMIN || VERIFICATION_MODE === 'multi_admin';
+                
+                return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-4">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-slate-400 font-mono">#${p.id} • ${tanggal}</p>
+                                <p class="font-black text-slate-800 text-sm mt-0.5">${nama}</p>
+                                <p class="text-[11px] text-slate-500">📱 ${wa}</p>
+                                ${IS_SUPER_ADMIN ? `<p class="text-[10px] text-emerald-600 font-bold mt-0.5">🏛️ ${lembaga}</p>` : ''}
+                            </div>
+                            <span class="text-[9px] font-bold px-2 py-1 rounded-full ${p.status === 'dibayar' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                                ${p.status === 'dibayar' ? '⏳ PERLU VERIF' : '✅ OK'}
+                            </span>
+                        </div>
+                        
+                        <p class="text-xs text-slate-600 bg-slate-50 rounded-lg p-2 mb-2">${p.keterangan || '-'}</p>
+                        
+                        <p class="text-lg font-black text-emerald-700 mb-3">${nominalStr}</p>
+                        
+                        ${isImage ? `
+                        <div class="rounded-xl overflow-hidden border border-slate-200 mb-3">
+                            <img src="${p.bukti_url_ngrok}" alt="Bukti" class="w-full h-auto max-h-48 object-contain bg-slate-50" onerror="this.style.display='none'">
+                        </div>
+                        ` : ''}
+                        
+                        ${p.bukti_transfer_url ? `
+                        <a href="${p.bukti_url_ngrok || p.bukti_transfer_url}" target="_blank"
+                           class="block bg-slate-100 text-slate-700 text-xs font-bold text-center py-2 rounded-lg mb-2 hover:bg-slate-200">
+                            🔍 Buka File Bukti
+                        </a>
+                        ` : '<p class="text-[10px] text-red-600 text-center mb-2">⚠️ Tidak ada bukti</p>'}
+                        
+                        ${p.status === 'dibayar' ? `
+                            ${canVerify ? `
+                            <button onclick="verifikasi(${p.id})"
+                                    class="w-full bg-emerald-600 text-white font-black py-2.5 rounded-xl text-sm hover:bg-emerald-700">
+                                ✅ Verifikasi
+                            </button>
+                            ` : `
+                            <div class="bg-amber-50 border border-amber-200 rounded-xl py-2.5 px-3 text-center text-[11px] text-amber-800 font-bold">
+                                🔒 Verifikasi oleh Super Admin
+                            </div>
+                            `}
+                        ` : `
+                        <div class="bg-emerald-50 rounded-lg p-2 text-center">
+                            <p class="text-[10px] text-emerald-700">✅ Diverifikasi: ${(p.verified_at || '').split(' ')[0]}</p>
+                            ${p.catatan_admin ? `<p class="text-[10px] text-slate-500 mt-1">${p.catatan_admin}</p>` : ''}
+                        </div>
+                        `}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function verifikasi(rencana_id) {
+            const catatan = prompt('Catatan verifikasi (opsional, boleh kosong):', 'Alhamdulillah, pembayaran sah.');
+            if (catatan === null) return;
+            
+            try {
+                const res = await fetch(`/api/mitra-alam/pembayaran/${rencana_id}/verifikasi`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: USER_ID, catatan_admin: catatan }),
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                    alert(`✅ ${data.message}`);
+                    loadData();
+                } else {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                    alert('❌ ' + (data.message || 'Gagal verifikasi'));
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

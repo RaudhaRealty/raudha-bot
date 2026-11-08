@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Raudha Mini App</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background-color:#f8fafc !important; color:#0f172a !important;
+    font-size: 16px;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .card-bg-white { background-color:#fff !important; }
+  .tab-hidden { display:none !important; }
+  .tab-visible { display:block !important; }
+  input[type="number"], input[type="text"], select, textarea {
+    font-size: 16px !important;
+    padding: 14px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+  label {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #334155 !important;
+    letter-spacing: 0.02em;
+  }
+  h3 {
+    font-size: 16px !important;
+    font-weight: 900 !important;
+  }
+  @keyframes overlayPop { 0%{opacity:0;transform:scale(0.9);} 100%{opacity:1;transform:scale(1);} }
+  @keyframes iconPop { 0%{opacity:0;transform:scale(0.3) rotate(-30deg);} 60%{transform:scale(1.15) rotate(5deg);} 100%{opacity:1;transform:scale(1) rotate(0);} }
+
+  /* ===== STICKY SAVE BAR (Zakat) ===== */
+  #sticky-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 35;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, rgba(248,250,252,1) 60%, rgba(248,250,252,0.85) 100%);
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -6px 16px rgba(15,23,42,0.06);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  #sticky-save-bar.sticky-hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body class="antialiased font-sans">
+
+<!-- HEADER -->
+<div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-2 shadow-md sticky top-0 z-50 rounded-b-3xl">
+  <div class="flex justify-between items-center max-w-md mx-auto">
+    <div>
+      <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">TOTAL HARTA TERKLARIFIKASI</p>
+      <h2 id="total-harta" class="text-2xl font-black tracking-tight text-white">Rp 0</h2>
+    </div>
+    <div class="text-right flex flex-col items-end gap-1">
+      <button id="btn-toggle-lang" onclick="toggleLanguage()" class="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition" title="Ganti Bahasa">🇮🇩 ID</button>
+      <span class="bg-emerald-700/60 border border-emerald-500/30 text-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
+        (Haul: 1 Syawal - Ramadhan)
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN WRAPPER -->
+<div class="max-w-md mx-auto p-4 space-y-6 pb-28">
+
+<!-- TAB NAV -->
+<div class="card-bg-white p-1.5 rounded-2xl shadow-md border-2 border-slate-200 flex justify-between gap-1 sticky top-[72px] z-40 overflow-x-auto">
+  <button type="button" id="btn-tab-zakat" onclick="switchMenuTab('zakat')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-black rounded-xl bg-emerald-600 text-white transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">💰</span><span class="pointer-events-none">Zakat</span>
+  </button>
+  <button type="button" id="btn-tab-bmt" onclick="switchMenuTab('bmt')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🪙</span><span class="pointer-events-none">BMT</span>
+  </button>
+  <button type="button" id="btn-tab-tagihan" onclick="switchMenuTab('tagihan')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🧾</span><span class="pointer-events-none">Tagihan</span>
+  </button>
+  <button type="button" id="btn-tab-laporan" onclick="switchMenuTab('laporan')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">📊</span><span class="pointer-events-none">Audit</span>
+  </button>
+  <button type="button" id="btn-tab-daftar" onclick="switchMenuTab('daftar')" class="flex-1 min-w-[60px] py-2 px-1 text-center text-[11px] font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition-all duration-150 leading-tight">
+    <span class="block text-base mb-0.5 pointer-events-none">🏛️</span><span class="pointer-events-none">Lembaga</span>
+  </button>
+</div>
+
+<!-- ==================== TAB 1: ZAKAT ==================== -->
+<div id="tab-zakat" class="tab-content tab-visible space-y-4">
+
+  <!-- SUB-TAB NAVIGATION -->
+  <div class="card-bg-white p-1.5 rounded-2xl shadow-sm border flex gap-1 sticky top-[140px] z-30 overflow-x-auto">
+    <button type="button" onclick="switchSubTabZakat('pendapatan')" id="btn-sub-zakat-pendapatan" class="flex-1 min-w-[70px] py-2 px-1 text-center text-xs font-black rounded-xl bg-emerald-600 text-white transition">💵 Pendapatan</button>
+    <button type="button" onclick="switchSubTabZakat('pertanian')" id="btn-sub-zakat-pertanian" class="flex-1 min-w-[70px] py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">🌾 Pertanian</button>
+    <button type="button" onclick="switchSubTabZakat('aset')" id="btn-sub-zakat-aset" class="flex-1 min-w-[70px] py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">👑 Aset</button>
+    <button type="button" onclick="switchSubTabZakat('pengeluaran')" id="btn-sub-zakat-pengeluaran" class="flex-1 min-w-[70px] py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">📉 Keluar</button>
+    <button type="button" onclick="switchSubTabZakat('riwayat')" id="btn-sub-zakat-riwayat" class="flex-1 min-w-[70px] py-2 px-1 text-center text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-100 transition">📋 Riwayat</button>
+  </div>
+
+  <!-- Banner mode edit (global) -->
+  <div id="edit-mode-banner" class="hidden bg-amber-50 border-2 border-amber-300 rounded-xl p-3 flex items-center gap-2">
+    <span class="text-xl">✏️</span>
+    <div class="flex-1">
+      <p class="text-xs font-black text-amber-800">Mode Edit Aktif</p>
+      <p class="text-[10px] text-amber-700">Mengedit jurnal #<span id="edit-jurnal-id">-</span>. Klik "Update Data" untuk menyimpan perubahan.</p>
+    </div>
+    <button onclick="resetForm()" class="text-amber-700 text-xs font-bold underline">Batal</button>
+  </div>
+
+  <!-- SUB-TAB 1: PENDAPATAN -->
+  <div id="sub-zakat-pendapatan" class="sub-zakat-content space-y-4">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3"><span class="text-xl">💵</span> Pendapatan & Kas Masuk</h3>
+      <p class="text-[11px] text-amber-700 font-bold text-center bg-amber-50 border border-amber-200 rounded-lg p-2">
+        ⚠️ Jangan lupa klik <b>SIMPAN DATA</b> di bawah setelah mengisi form ini</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Gaji & Honor (Rp)</label>
+          <input type="number" id="f-gaji" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Hadiah/Bonus/Hibah (Rp)</label>
+          <input type="number" id="f-hadiah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Tabungan/Saldo BMT (Rp)</label>
+          <input type="number" id="f-bmt" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 2: PERTANIAN -->
+  <div id="sub-zakat-pertanian" class="sub-zakat-content space-y-4 hidden">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3"><span class="text-xl">🌾</span> Hasil Pertanian</h3>
+      <p class="text-[11px] text-amber-700 font-bold text-center bg-amber-50 border border-amber-200 rounded-lg p-2">
+        ⚠️ Jangan lupa klik <b>SIMPAN DATA</b> di bawah setelah mengisi form ini</p> 
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Hasil Panen (Kg)</label>
+          <input type="number" id="f-tani" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Jenis Pengairan</label>
+          <select id="f-pengairan" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-bold text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+            <option value="irigasi">🚜 Pompa/Irigasi Berbayar (5%)</option>
+            <option value="tadah_hujan">🌧️ Tadah Hujan/Sungai (10%)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 3: ASET -->
+  <div id="sub-zakat-aset" class="sub-zakat-content space-y-4 hidden">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-emerald-800 flex items-center gap-2 border-b-2 border-emerald-100 pb-3"><span class="text-xl">👑</span> Logam Mulia & Temuan</h3>
+      <p class="text-[11px] text-amber-700 font-bold text-center bg-amber-50 border border-amber-200 rounded-lg p-2">
+        ⚠️ Jangan lupa klik <b>SIMPAN DATA</b> di bawah setelah mengisi form ini</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Nilai Aset Emas/Perak/Koleksi</label>
+          <div class="flex gap-2">
+            <input type="number" id="f-mewah" value="0" class="flex-1 p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+            <select id="f-tipe-mewah" class="w-28 p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-bold text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+              <option value="gram">Gram</option>
+              <option value="rupiah">Rupiah</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Harta Karun / Temuan (Rp)</label>
+          <input type="number" id="f-temuan" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 4: PENGELUARAN -->
+  <div id="sub-zakat-pengeluaran" class="sub-zakat-content space-y-4 hidden">
+    <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+      <h3 class="text-base font-black text-rose-800 flex items-center gap-2 border-b-2 border-rose-100 pb-3"><span class="text-xl">📉</span> Pengeluaran & Pengurang</h3>
+      <p class="text-[11px] text-amber-700 font-bold text-center bg-amber-50 border border-amber-200 rounded-lg p-2">
+        ⚠️ Jangan lupa klik <b>SIMPAN DATA</b> di bawah setelah mengisi form ini</p>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Rutin/Listrik (Rp)</label>
+            <input type="number" id="f-rutin" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Sekolah (Rp)</label>
+            <input type="number" id="f-sekolah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Utang (Rp)</label>
+            <input type="number" id="f-utang" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+          <div>
+            <label class="block text-sm font-black text-slate-700 mb-2">Sedekah (Rp)</label>
+            <input type="number" id="f-sedekah" value="0" class="w-full p-4 bg-white border-2 border-slate-300 rounded-xl outline-none font-black text-lg text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 5: RIWAYAT & EDIT -->
+  <div id="sub-zakat-riwayat" class="sub-zakat-content space-y-4 hidden">
+
+    <div class="card-bg-white p-5 rounded-3xl shadow-md border-2 border-slate-200 space-y-3">
+      <h3 class="text-sm font-black text-slate-800 border-b pb-2">💾 Aksi Data</h3>
+      <p class="text-[10px] text-slate-500 leading-relaxed">
+        Klik "Simpan Data" untuk menyimpan input dari form Pendapatan, Pertanian, Aset, dan Pengeluaran yang baru saja Anda isi.
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="simpanDataSyariah()" id="btn-simpan-form" class="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+          <span class="text-xl">💾</span>
+          <span class="text-left">
+            <span class="block text-sm font-black tracking-wide" id="btn-simpan-text">SIMPAN DATA</span>
+            <span class="block text-[10px] font-normal opacity-90" id="btn-simpan-sub">Tanpa bayar dulu</span>
+          </span>
+        </button>
+        <button onclick="resetForm()" class="bg-slate-500 hover:bg-slate-600 text-white font-black py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+          <span class="text-xl">🔄</span>
+          <span class="text-left">
+            <span class="block text-sm font-black tracking-wide">RESET</span>
+            <span class="block text-[10px] font-normal opacity-90">Kosongkan form</span>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card-bg-white p-5 rounded-3xl shadow-md border-2 border-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5"><span>📋</span> Riwayat Input Data</h3>
+        <button onclick="muatRiwayatJurnal()" class="text-[10px] text-blue-600 font-bold hover:underline">🔄 Refresh</button>
+      </div>
+      <p class="text-[10px] text-slate-500 leading-relaxed">
+        Data yang tersimpan di sini menjadi dasar perhitungan zakat, khumus, dan potensi kewajiban lainnya. Klik ✏️ untuk edit atau 🗑 untuk hapus.
+      </p>
+      <div id="jurnal-list" class="space-y-2">
+        <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+      </div>
+    </div>
+
+  </div>
+  <!-- ✅ PENUTUP #sub-zakat-riwayat — SEBELUMNYA HILANG! -->
+
+  <!-- ===== STICKY SAVE BAR ===== -->
+  <div id="sticky-save-bar" class="sticky-hidden">
+    <button onclick="simpanDataSyariah()" id="btn-sticky-simpan" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+      <span class="text-xl">💾</span>
+      <span class="text-left">
+        <span class="block text-sm font-black tracking-wide" id="btn-sticky-simpan-text">SIMPAN DATA</span>
+        <span class="block text-[10px] font-normal opacity-90" id="btn-sticky-simpan-sub">Tanpa bayar dulu</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- RINGKASAN HASIL -->
+  <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-4 border-2 border-slate-700">
+    <div class="flex justify-between items-center text-base">
+      <span>Estimasi Zakat Maal + Tani:</span>
+      <span id="est-zakat" class="font-black text-emerald-400">Rp 0</span>
+    </div>
+    <div class="flex justify-between items-center text-base">
+      <span>Estimasi Khumus:</span>
+      <span id="est-khumus" class="font-black text-amber-400">Rp 0</span>
+    </div>
+    <div class="pt-3 border-t border-slate-700 flex items-center justify-between">
+      <span class="text-sm text-slate-300">Khumus Wajib (QS. Al-Anfal: 41)</span>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="toggle-khumus" class="sr-only peer" checked onchange="toggleKhumus(this)">
+        <span class="block w-11 h-6 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></span>
+      </label>
+    </div>
+    <div class="pt-3 border-t border-slate-700 text-sm text-slate-300 leading-relaxed">
+      <div class="flex justify-between"><span>Status Haul:</span><span id="info-haul" class="font-bold text-amber-300">Memuat...</span></div>
+      <p id="info-haul-detail" class="text-slate-500 mt-1 text-xs">—</p>
+    </div>
+  </div>
+
+  <!-- Tombol Aksi Setor -->
+  <div class="space-y-3 mt-4">
+    <p id="info-tombol-setor" class="text-center text-xs text-slate-500 italic py-3">
+      💡 Tombol <b>Setor Zakat</b> / <b>Khumus</b> akan muncul otomatis setelah Anda mengisi form dan ada kewajiban.
+    </p>
+    <button id="btn-submit-zakat" onclick="prosesSetorZakat()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 hidden">
+      <span class="text-2xl">💰</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">SETOR ZAKAT SEKARANG</span>
+        <span class="block text-[10px] font-normal opacity-90">Bayar ke lembaga amil terverifikasi</span>
+      </span>
+    </button>
+    <button id="btn-submit-khumus" onclick="prosesSetorKhumus()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black py-5 rounded-2xl shadow-2xl shadow-amber-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 hidden">
+      <span class="text-2xl">📿</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">TUNAIKAN KHUMUS</span>
+        <span class="block text-[10px] font-normal opacity-90">1/5 dari harta temuan atau surplus</span>
+      </span>
+    </button>
+    <button id="btn-submit-infaq" onclick="prosesSetorInfaq()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black py-5 rounded-2xl shadow-2xl shadow-blue-900/30 transition-all active:scale-95 flex items-center justify-center gap-3">
+      <span class="text-2xl">🤲</span>
+      <span class="text-left">
+        <span class="block text-base font-black tracking-wide">SALURKAN INFAQ / SEDEKAH</span>
+        <span class="block text-[10px] font-normal opacity-90">Amal jariyah yang mengurangi harta</span>
+      </span>
+    </button>
+  </div>
+
+</div> <!-- ✅ PENUTUP tab-zakat -->
+
+
+<!-- ==================== TAB 2: BMT ==================== -->
+<div id="tab-bmt" class="tab-content tab-hidden space-y-4">
+  <div class="p-5 rounded-3xl border border-amber-200 space-y-3 shadow-sm" style="background:linear-gradient(135deg,#fffdf5 0%,#fff9de 100%) !important;">
+    <h3 class="text-sm font-black text-amber-900 flex items-center gap-1.5 border-b border-amber-200 pb-2">
+      <span>🪙</span> Saldo Emas Proteksi Inflasi
+    </h3>
+    <p class="text-xs text-amber-800 leading-relaxed">
+      BMT (Baitul Maal wa Tamwil) Raudha adalah Lembaga Keuangan Syariah pertama yang melayani Ummat dalam penyimpanan Dana yang dikonversi ke Logam mulia Emas sehingga aman dan terhindar dari inflasi.
+    </p>
+    <div class="card-bg-white p-4 rounded-xl border border-amber-200 flex justify-between items-center">
+      <div>
+        <p class="text-[10px] text-slate-600 font-bold uppercase">Nilai Kas BMT</p>
+        <p id="view-bmt-idr" class="text-lg font-black text-amber-700">Rp 0</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] text-slate-600 font-bold uppercase">Berat Murni</p>
+        <p class="text-xs font-bold text-slate-700"><span id="view-bmt-emas">0.0000</span> gr</p>
+      </div>
+    </div>
+    <p class="text-[10px] text-amber-700 leading-relaxed">
+      💡 Untuk menambah tabungan, gunakan kolom <b>Tabungan BMT</b> di tab Zakat → Pendapatan, lalu klik <b>Simpan Data</b>.
+    </p>
+  </div>
+</div>
+
+<!-- ==================== TAB 2.5: TAGIHAN ==================== -->
+<div id="tab-tagihan" class="tab-content tab-hidden space-y-4">
+
+  <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+    <h3 class="text-sm font-black text-blue-800 flex items-center gap-1.5 border-b pb-2"><span>🧾</span> Ringkasan Tagihan</h3>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="bg-blue-50 p-2 rounded-xl border border-blue-200">
+        <p class="text-[9px] text-blue-700 font-bold uppercase">Total</p>
+        <p id="tagihan-summary-total" class="text-sm font-black text-blue-700">Rp 0</p>
+      </div>
+      <div class="bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+        <p class="text-[9px] text-emerald-700 font-bold uppercase">Lunas</p>
+        <p id="tagihan-summary-lunas" class="text-sm font-black text-emerald-700">Rp 0</p>
+      </div>
+      <div class="bg-amber-50 p-2 rounded-xl border border-amber-200">
+        <p class="text-[9px] text-amber-700 font-bold uppercase">Belum</p>
+        <p id="tagihan-summary-belum" class="text-sm font-black text-amber-700">Rp 0</p>
+      </div>
+    </div>
+  </div>
+
+  <button onclick="bukaFormTambahTagihan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-900/20 transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+    <span>➕</span> Tambah Tagihan Baru
+  </button>
+
+  <div class="card-bg-white p-6 rounded-3xl shadow-md border-2 border-slate-200 space-y-4">
+    <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5 border-b pb-2"><span>📋</span> Daftar Tagihan</h3>
+    <div id="tagihan-list" class="space-y-2">
+      <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== TAB 3: AUDIT ==================== -->
+<div id="tab-laporan" class="tab-content tab-hidden">
+  <div class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <h3 class="text-sm font-black text-slate-800 border-b pb-2 flex items-center gap-1.5"><span>📊</span> Audit Finansial Syariah</h3>
+    <div id="laporan-detail" class="space-y-1 text-xs text-slate-600"><p class="text-slate-400">Memuat...</p></div>
+    <button onclick="downloadPDF()" class="w-full mt-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+      <span>📄</span> Download Laporan Zakat (PDF)
+    </button>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: DAFTAR LEMBAGA ==================== -->
+<div id="tab-daftar" class="tab-content tab-hidden space-y-4">
+
+  <div id="daftar-status-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
+    <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>📋</span> Status Pengajuan Lembaga</h3>
+    <div id="daftar-status-content" class="text-xs text-slate-600 space-y-2"><p class="text-slate-400">Memuat...</p></div>
+  </div>
+
+  <div id="lembaga-dashboard-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
+    <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl p-3 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex-1">
+          <p class="font-bold text-slate-800 text-sm">📺 Aktivasi TV Masjid</p>
+          <p class="text-[10px] text-slate-500 mt-1">Dapatkan link TV untuk menampilkan jam sholat & kas masjid.</p>
+        </div>
+        <button onclick="bukaTVConfig()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 rounded-lg shadow-sm text-xs whitespace-nowrap">Buka</button>
+      </div>
+    </div>
+
+    <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🏦</span> Kelola Rekening Lembaga</h3>
+    <p class="text-[10px] text-slate-500 leading-relaxed">Rekening ini yang muncul di halaman pembayaran user.</p>
+
+    <button onclick="bukaFormTambahRekening()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+      <span>➕</span> Tambah Rekening Baru
+    </button>
+
+    <div id="rekening-list-admin" class="space-y-2">
+      <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+    </div>
+
+    <div id="form-rekening-box" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2" style="display:none;">
+      <p id="form-rekening-title" class="text-xs font-bold text-emerald-800">Tambah Rekening Baru</p>
+      <input type="hidden" id="rek-id-edit" value="">
+      <input type="text" id="rek-nama-bank" placeholder="Nama Bank (BSI, BCA, dll)" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+      <input type="text" id="rek-nomor" placeholder="Nomor Rekening" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+      <input type="text" id="rek-atas-nama" placeholder="Atas Nama" class="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold">
+      <div class="flex gap-2">
+        <button onclick="simpanRekening()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 rounded-lg text-xs">💾 Simpan</button>
+        <button onclick="tutupFormRekening()" class="flex-1 bg-slate-400 hover:bg-slate-500 text-white font-black py-2 rounded-lg text-xs">❌ Batal</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 mt-3">
+      <p class="text-xs font-bold text-slate-700">📅 Kelola Agenda & Hari Besar</p>
+      <div id="agenda-list" class="space-y-1 mb-2">
+        <p class="text-[10px] text-slate-400">Memuat...</p>
+      </div>
+      <input type="hidden" id="agenda-lembaga-id">
+      <select id="agenda-tipe" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold">
+        <option value="kegiatan">Kegiatan Masjid</option>
+        <option value="hari_besar">Hari Besar Islam</option>
+      </select>
+      <input type="date" id="agenda-tanggal" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold">
+      <input type="text" id="agenda-nama" placeholder="Nama Agenda / Acara" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold">
+      <input type="text" id="agenda-pemateri" placeholder="Pemateri / PIC (Opsional)" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold">
+      <button onclick="simpanAgenda()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">➕ Tambah Agenda</button>
+    </div>
+  </div>
+
+  <div id="lembaga-pembayaran-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3" style="display:none;">
+    <h3 class="text-sm font-black text-purple-800 flex items-center gap-1.5 border-b pb-2"><span>📥</span> Pembayaran Masuk</h3>
+    <p class="text-[10px] text-slate-500 leading-relaxed">Daftar setoran dari muzakki yang menunggu verifikasi Anda.</p>
+    <div id="pembayaran-list-admin" class="space-y-2">
+      <p class="text-slate-400 text-xs text-center py-4">Memuat...</p>
+    </div>
+  </div>
+
+  <div id="daftar-form-box" class="card-bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+    <h3 class="text-sm font-black text-emerald-800 flex items-center gap-1.5 border-b pb-2"><span>🏛️</span> Daftarkan Lembaga Anda</h3>
+    <p class="text-[10px] text-slate-500 leading-relaxed">Isi data lembaga. Tim Super Admin akan memverifikasi.</p>
+
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nama Lembaga *</label>
+      <input type="text" id="dl-nama" placeholder="LAZIS Al-Ikhlas" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Jenis *</label>
+      <select id="dl-jenis" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+        <option value="LAZIS">LAZIS</option>
+        <option value="BAZNAS">BAZNAS</option>
+        <option value="BMT">BMT</option>
+        <option value="MASJID">Masjid</option>
+        <option value="PESANTREN">Pesantren</option>
+        <option value="LAINNYA">Lainnya</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">NPWP *</label>
+      <input type="text" id="dl-npwp" placeholder="00.000.000.0-000.000" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Alamat *</label>
+      <textarea id="dl-alamat" rows="2" placeholder="Jl. ..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500"></textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Telepon *</label>
+        <input type="tel" id="dl-telepon" placeholder="021xxxxxx" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Email *</label>
+        <input type="email" id="dl-email" placeholder="admin@lembaga.id" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      </div>
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nama Anda (Admin) *</label>
+      <input type="text" id="dl-admin-nama" placeholder="Nama lengkap" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">WhatsApp Anda *</label>
+      <input type="tel" id="dl-admin-wa" placeholder="08xxxxxxxxxx" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Upload Dokumen — Opsional</label>
+      <input type="file" id="dl-file" accept=".jpg,.jpeg,.png,.pdf,.webp" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500">
+      <p class="text-[9px] text-slate-600 mt-1">Maks 5 MB. JPG/PNG/PDF/WEBP.</p>
+    </div>
+    <div id="dl-upload-status" class="text-[10px] text-slate-600"></div>
+    <button onclick="submitDaftarLembaga()" id="btn-daftar-submit" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+      <span>📤</span><span>Kirim Pengajuan Lembaga</span>
+    </button>
+    <p class="text-[9px] text-slate-600 text-center leading-relaxed">Dengan mengirim, Anda bersedia diverifikasi oleh Super Admin Raudha.</p>
+  </div>
+
+</div>
+
+</div> <!-- ✅ PENUTUP MAIN WRAPPER (max-w-md mx-auto) -->
+
+<!-- ==================== MODAL & OVERLAY (SATU-SATUNYA SALINAN) ==================== -->
+
+<!-- MODAL 1: PILIH LEMBAGA -->
+<div id="modal-pilih-lembaga" class="fixed inset-0 z-[9990] bg-black/60 items-center justify-center p-4" style="display:none;">
+  <div class="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+    <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+      <h2 class="text-sm font-black text-slate-800">🏛️ Pilih Lembaga Penerima</h2>
+      <button onclick="tutupModalLembaga()" class="text-slate-600 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div id="modal-lembaga-list" class="p-4 space-y-2">
+      <p class="text-center text-slate-600 text-xs py-8">Memuat...</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: PILIH REKENING -->
+<div id="modal-pilih-rekening" class="fixed inset-0 z-[9991] bg-black/60 items-center justify-center p-4" style="display:none;">
+  <div class="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+    <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+      <h2 class="text-sm font-black text-slate-800">🏦 Pilih Rekening Transfer</h2>
+      <button onclick="tutupModalRekening()" class="text-slate-600 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div id="modal-rekening-list" class="p-4 space-y-2">
+      <p class="text-center text-slate-600 text-xs py-8">Memuat...</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: KONFIRMASI & UPLOAD BUKTI -->
+<div id="modal-konfirmasi-setor" class="fixed inset-0 z-[9992] bg-black/60 items-center justify-center p-4" style="display:none;">
+  <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+      <h2 class="text-sm font-black text-slate-800">📤 Konfirmasi Setor</h2>
+      <button onclick="tutupModalKonfirmasi()" class="text-slate-600 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div class="bg-slate-50 rounded-xl p-3 space-y-1 text-xs">
+        <div class="flex justify-between"><span class="text-slate-500">Lembaga:</span><strong id="konf-lembaga">-</strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Rekening:</span><strong id="konf-rekening" class="text-right">-</strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Jenis:</span><strong id="konf-jenis">-</strong></div>
+        <div class="flex justify-between border-t pt-2 mt-2"><span class="text-slate-500">Total:</span><strong id="konf-nominal" class="text-emerald-700 text-base">Rp 0</strong></div>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Upload Bukti Transfer *</label>
+        <input type="file" id="konf-file-bukti" accept=".jpg,.jpeg,.png,.pdf,.webp" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+        <p class="text-[9px] text-slate-600 mt-1">Maks 3 MB. JPG/PNG/PDF/WEBP.</p>
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Catatan (Opsional)</label>
+        <textarea id="konf-catatan" rows="2" placeholder="Contoh: Transfer dari BSI 1234567890" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"></textarea>
+      </div>
+      <button onclick="prosesSetor()" id="btn-proses-setor" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl text-sm">✅ Konfirmasi & Kirim</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 4: TAGIHAN -->
+<div id="modal-tagihan" class="fixed inset-0 z-[9995] bg-black/60 items-center justify-center p-4" style="display:none;">
+  <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+      <h2 id="modal-tagihan-title" class="text-sm font-black text-slate-800">➕ Tambah Tagihan</h2>
+      <button onclick="tutupFormTagihan()" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <input type="hidden" id="tagihan-id-edit" value="">
+      <div>
+        <label class="block text-sm font-black text-slate-700 mb-2">Jenis Tagihan *</label>
+        <select id="tagihan-jenis" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+          <option value="listrik">⚡ Listrik (PLN)</option>
+          <option value="air">💧 Air (PDAM)</option>
+          <option value="internet">🌐 Internet</option>
+          <option value="pulsa">📱 Pulsa / Paket Data</option>
+          <option value="cicilan">🏠 Cicilan / KPR</option>
+          <option value="iuran">👥 Iuran Organisasi</option>
+          <option value="hutang">💳 Hutang Pribadi</option>
+          <option value="lainnya">📦 Lainnya</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-black text-slate-700 mb-2">Nama Tagihan *</label>
+        <input type="text" id="tagihan-nama" placeholder="PLN Rumah" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+      </div>
+      <div>
+        <label class="block text-sm font-black text-slate-700 mb-2">Nominal (Rp) *</label>
+        <input type="number" id="tagihan-nominal" placeholder="500000" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Jatuh Tempo</label>
+          <input type="date" id="tagihan-jatuh-tempo" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-700 mb-2">Frekuensi</label>
+          <select id="tagihan-frekuensi" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+            <option value="sekali">Sekali</option>
+            <option value="bulanan">Bulanan</option>
+            <option value="tahunan">Tahunan</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-black text-slate-700 mb-2">Catatan (opsional)</label>
+        <textarea id="tagihan-catatan" rows="2" placeholder="Token listrik rumah" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"></textarea>
+      </div>
+      <button onclick="simpanTagihan()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl text-sm">💾 Simpan Tagihan</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY SUKSES -->
+<div id="success-overlay" class="fixed bottom-6 left-4 right-4 z-[9999] flex justify-center" style="display:none;">
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-emerald-500" style="animation: overlayPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+    <div class="p-4 flex items-center gap-3 bg-emerald-50 border-b border-emerald-200">
+      <div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h2 class="text-sm font-black text-slate-800">Laporan Berhasil!</h2>
+        <p class="text-[11px] text-slate-500 leading-tight mt-0.5">Alhamdulillah, data tersimpan.</p>
+      </div>
+    </div>
+    <div class="p-4 space-y-3">
+      <div class="bg-slate-50 rounded-xl p-3 space-y-2 border border-slate-100">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-slate-500 uppercase">Zakat</span>
+          <span id="overlay-zakat" class="font-black text-emerald-700">Rp 0</span>
+        </div>
+        <div class="h-px bg-slate-200"></div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-slate-500 uppercase">Khumus</span>
+          <span id="overlay-khumus" class="font-black text-amber-600">Rp 0</span>
+        </div>
+      </div>
+      <div id="overlay-status-box" class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+        <div id="overlay-spinner" class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" style="display: block;"></div>
+        <div id="overlay-check" class="w-4 h-4 flex items-center justify-center flex-shrink-0" style="display: none;">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <p id="overlay-status" class="text-[11px] font-semibold text-emerald-800 leading-snug">Mengirim ke bot Telegram...</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="document.getElementById('success-overlay').style.display='none'" class="flex-1 bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg text-xs transition hover:bg-slate-300">Lihat Dashboard</button>
+        <button onclick="tutupAplikasi()" class="flex-1 bg-emerald-600 text-white font-black py-2.5 rounded-lg text-xs transition hover:bg-emerald-700 flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          Tutup
+        </button>
+      </div>
+      <p class="text-[9px] text-center text-slate-500 leading-relaxed">Balasan admin akan muncul di chat Telegram.</p>
+    </div>
+  </div>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+// =====================================================================
+// KONFIGURASI
+// =====================================================================
+const CFG = {{ cfg|tojson }};
+const HARGA_EMAS_BASE   = CFG.harga_emas;
+const BASELINE_AWAL     = CFG.baseline_awal;
+const HARGA_TANI_PER_KG = CFG.harga_tani_per_kg;
+const NISAB_EMAS_GRAM   = CFG.nisab_emas_gram;
+const NISAB_TANI_KG     = CFG.nisab_pertanian_kg;
+const KADAR_ZAKAT       = CFG.kadar_zakat;
+const KADAR_TANI_ALAMI  = CFG.kadar_tanah_alami;
+const KADAR_TANI_BIAYA  = CFG.kadar_tanah_biaya;
+const KADAR_KHUMUS      = CFG.kadar_khumus;
+
+// Nilai kewajiban dari DATABASE (diisi oleh muatDataPusat)
+window._dbKhumus = 0;   // total khumus belum dibayar
+window._dbZakat  = 0;   // zakat maal belum dibayar
+window._dbKhumusKotor = 0;   // ← WAJIB ADA
+window._editJurnalKhumusKotor = 0;   // ← tambahkan
+
+// =====================================================================
+// USER ID
+// =====================================================================
+let userId = 123456789;
+let isProcessing = false;
+let _processingCount = 0;
+
+function beginProcessing() { _processingCount++; isProcessing = true; }
+function endProcessing()   { _processingCount = Math.max(0, _processingCount - 1); isProcessing = _processingCount > 0; }
+
+try {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlUserId = urlParams.get('user_id');
+  if (urlUserId && /^\d+$/.test(urlUserId)) {
+    userId = parseInt(urlUserId);
+    console.log('[DEBUG] userId dari URL parameter:', userId);
+  }
+} catch(e) { console.log('[DEBUG] URL parse error:', e); }
+
+try {
+  if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+    userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+    console.log('[DEBUG] userId dari Telegram:', userId);
+  } else if (userId === 123456789) {
+    console.log('[DEBUG] Bukan Telegram & tanpa ?user_id, pakai default:', userId);
+  }
+} catch(e) { console.log('[DEBUG] Error Telegram:', e); }
+
+window.userId = userId;
+console.log('[DEBUG] userId final:', window.userId);
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function formatRupiah(val) {
+  return 'Rp ' + parseInt(val || 0).toLocaleString('id-ID').replace(/,/g, '.');
+}
+
+function bacaInputAman(id, adalahSelect = false) {
+  const el = document.getElementById(id);
+  if (!el) return adalahSelect ? 'irigasi' : 0;
+  return adalahSelect ? el.value : (parseFloat(el.value) || 0);
+}
+
+// =====================================================================
+// HITUNG PREVIEW FORM
+// =====================================================================
+//
+// Logika khumus preview:
+//   - Mode TAMBAH (bukan edit):
+//       total_kotor = _dbKhumusKotor (dari DB) + khumusKotor_form
+//       sisa        = total_kotor − sudahDibayar
+//   - Mode EDIT (window._editJurnalId ada):
+//       total_kotor = _dbKhumusKotor − khumusKotor_jurnal_lama + khumusKotor_form
+//       sisa        = total_kotor − sudahDibayar
+//   - Form BERSIH (tidak dirty, bukan edit):
+//       pakai _dbKhumus langsung (sisa dari backend)
+//
+// sudahDibayar = _dbKhumusKotor − _dbKhumus
+// =====================================================================
+
+function hitungPreviewForm() {
+  // Tidak ada guard isProcessing — fungsi ini murni baca form + tulis DOM.
+
+  const gaji      = bacaInputAman('f-gaji');
+  const hadiah    = bacaInputAman('f-hadiah');
+  const tani      = bacaInputAman('f-tani');
+  const pengairan = bacaInputAman('f-pengairan', true);
+  const temuan    = bacaInputAman('f-temuan');
+  const rutin     = bacaInputAman('f-rutin');
+  const sekolah   = bacaInputAman('f-sekolah');
+  const utang     = bacaInputAman('f-utang');
+  const sedekah   = bacaInputAman('f-sedekah');
+
+  const totalPengeluaran = rutin + sekolah + utang + sedekah;
+
+  // ── Zakat Tani (nisab 653 kg) ──
+  let zakatTani = 0;
+  if (tani >= NISAB_TANI_KG) {
+    const kadar = (pengairan === 'tadah_hujan') ? KADAR_TANI_ALAMI : KADAR_TANI_BIAYA;
+    zakatTani = tani * kadar * HARGA_TANI_PER_KG;
+  }
+
+  // ── Khumus kotor dari form ──
+  const surplus       = Math.max(0, (gaji + hadiah) - totalPengeluaran);
+  const khumusTemuan  = temuan * KADAR_KHUMUS;
+  const khumusSurplus = surplus * KADAR_KHUMUS;
+  const khumusKotorForm = khumusTemuan + khumusSurplus;
+
+  // ── Nilai DB ──
+  const dbKotor      = Number(window._dbKhumusKotor) || 0;
+  const dbSisa       = Number(window._dbKhumus) || 0;
+  const sudahDibayar = Math.max(0, dbKotor - dbSisa);
+
+  // ── Total kotor tergantung mode ──
+  const isEdit       = !!window._editJurnalId;
+  const dirty        = !!window._formDirty;
+  const editKotor    = Number(window._editJurnalKhumusKotor) || 0;
+
+  let totalKotor;
+  if (isEdit) {
+    // Kurangi kontribusi jurnal lama, tambah dari form baru
+    totalKotor = Math.max(0, dbKotor - editKotor) + khumusKotorForm;
+  } else {
+    // Mode tambah: DB + form
+    totalKotor = dbKotor + khumusKotorForm;
+  }
+
+  const khumusPreview = Math.max(0, totalKotor - sudahDibayar);
+
+  // ── Nilai final ──
+  // BERSIH & bukan edit  → pakai DB
+  // DIRTY atau edit      → pakai preview
+  const usePreview  = dirty || isEdit;
+  const totalKhumus = usePreview ? khumusPreview : dbSisa;
+  const totalZakat  = usePreview ? zakatTani     : (Number(window._dbZakat) || 0);
+
+  // ── Update preview di form ──
+  const elZakat  = document.getElementById('est-zakat');
+  const elKhumus = document.getElementById('est-khumus');
+  if (elZakat)  elZakat.innerText  = formatRupiah(totalZakat);
+  if (elKhumus) elKhumus.innerText = formatRupiah(totalKhumus);
+
+  // ── Toggle tombol aksi ──
+  const btnZakat  = document.getElementById('btn-submit-zakat');
+  const btnKhumus = document.getElementById('btn-submit-khumus');
+  const btnInfaq  = document.getElementById('btn-submit-infaq');
+
+  if (btnZakat) {
+    btnZakat.classList.remove('hidden');
+    btnZakat.classList.toggle('opacity-50', totalZakat <= 0);
+    btnZakat.classList.toggle('pointer-events-none', totalZakat <= 0);
+  }
+  if (btnKhumus) {
+    btnKhumus.classList.remove('hidden');
+    btnKhumus.classList.toggle('opacity-50', totalKhumus <= 0);
+    btnKhumus.classList.toggle('pointer-events-none', totalKhumus <= 0);
+  }
+  if (btnInfaq) btnInfaq.classList.remove('hidden');
+
+  // ── Pesan info saat tidak ada kewajiban ──
+  const infoEl = document.getElementById('info-tombol-setor');
+  if (infoEl) {
+    const adaKewajiban = (totalZakat > 0) || (totalKhumus > 0);
+    infoEl.classList.toggle('hidden', adaKewajiban);
+  }
+}
+
+// Alias agar pemanggil lama tetap jalan
+function hitungZakatOtomatis() { hitungPreviewForm(); }
+
+// =====================================================================
+// STICKY SAVE BAR
+// =====================================================================
+
+const FORM_SUB_TABS = ['pendapatan', 'pertanian', 'aset', 'pengeluaran'];
+let _currentSubTabZakat = 'pendapatan';
+
+function isFormSubTabAktif() {
+  return FORM_SUB_TABS.includes(_currentSubTabZakat);
+}
+
+function updateStickySaveBar() {
+  const bar = document.getElementById('sticky-save-bar');
+  if (!bar) return;
+
+  const isEditMode = !!window._editJurnalId;
+  const dirty      = !!window._formDirty;
+
+  // Selalu tampil di sub-tab form; sembunyi hanya di sub-tab Riwayat
+  const shouldShow = isFormSubTabAktif();
+  bar.classList.toggle('sticky-hidden', !shouldShow);
+
+  // Label dinamis
+  const textEl = document.getElementById('btn-sticky-simpan-text');
+  const subEl  = document.getElementById('btn-sticky-simpan-sub');
+  if (isEditMode) {
+    if (textEl) textEl.textContent = 'UPDATE DATA';
+    if (subEl)  subEl.textContent  = 'Edit jurnal #' + window._editJurnalId;
+  } else {
+    if (textEl) textEl.textContent = 'SIMPAN DATA';
+    if (subEl)  subEl.textContent  = dirty ? 'Klik untuk menyimpan' : 'Belum ada perubahan';
+  }
+
+  // Disabled saat belum dirty & bukan mode edit
+  const btn = document.getElementById('btn-sticky-simpan');
+  if (btn) {
+    const disabled = !dirty && !isEditMode;
+    btn.disabled = disabled;
+    btn.classList.toggle('opacity-50', disabled);
+    btn.classList.toggle('pointer-events-none', disabled);
+  }
+}
+
+function markFormDirty() { window._formDirty = true;  updateStickySaveBar(); }
+function clearFormDirty() { window._formDirty = false; updateStickySaveBar(); }
+
+// =====================================================================
+// NAVIGASI TAB
+// =====================================================================
+function switchMenuTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.remove('tab-visible');
+    el.classList.add('tab-hidden');
+  });
+
+  const aktif = document.getElementById('tab-' + name);
+  if (aktif) {
+    aktif.classList.remove('tab-hidden');
+    aktif.classList.add('tab-visible');
+  }
+
+  ['zakat', 'bmt', 'tagihan', 'laporan', 'daftar'].forEach(t => {
+    const btn = document.getElementById('btn-tab-' + t);
+    if (!btn) return;
+    if (t === name) {
+      btn.classList.add('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.remove('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    } else {
+      btn.classList.remove('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.add('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    }
+  });
+
+  if (name === 'laporan') muatDataPusat();
+  if (name === 'daftar')  cekStatusLembaga();
+  if (name === 'tagihan') muatTagihan();
+}
+
+function switchSubTabZakat(name) {
+  const valid = ['pendapatan', 'pertanian', 'aset', 'pengeluaran', 'riwayat'];
+  if (!valid.includes(name)) return;
+
+  _currentSubTabZakat = name;
+
+  document.querySelectorAll('.sub-zakat-content').forEach(el => el.classList.add('hidden'));
+  const aktif = document.getElementById('sub-zakat-' + name);
+  if (aktif) aktif.classList.remove('hidden');
+
+  valid.forEach(t => {
+    const btn = document.getElementById('btn-sub-zakat-' + t);
+    if (!btn) return;
+    if (t === name) {
+      btn.classList.add('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.remove('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    } else {
+      btn.classList.remove('bg-emerald-600', 'text-white', 'font-black');
+      btn.classList.add('text-slate-700', 'font-bold', 'hover:bg-slate-100');
+    }
+  });
+
+  updateStickySaveBar();
+
+  if (name === 'riwayat') {
+    setTimeout(() => muatRiwayatJurnal(), 100);
+  }
+}
+
+// =====================================================================
+// MUAT DATA PUSAT
+// =====================================================================
+
+function muatDataPusat() {
+  beginProcessing();
+  return fetch('/api/laporan/' + userId + '?user_id=' + userId)
+    .then(r => r.json())
+    .then(d => {
+      if (d?.status !== 'success') { endProcessing(); return; }
+      const l = d.laporan;
+
+      // ── Simpan nilai kewajiban dari DB ke variabel global ──
+      // _dbKhumusKotor = khumus kotor (temuan × 20%) dari seluruh jurnal
+      // _dbKhumus      = sisa khumus belum dibayar (dari backend)
+      // _dbZakat       = sisa zakat maal belum dibayar
+      window._dbKhumusKotor = (Number(l.total_temuan_kotor) || 0) * KADAR_KHUMUS;
+      window._dbKhumus      = Number(l.total_khumus) || 0;
+      window._dbZakat       = Number(l.zakat_maal_belum_dibayar) || 0;
+
+      // ── Header total harta ──
+      const totalHartaEl = document.getElementById('total-harta');
+      if (totalHartaEl && typeof l.total_harta === 'number') {
+        let suffix = '';
+        if (l.total_pembayaran_dibayar > 0) {
+          suffix = ' <span class="text-amber-300 text-base">*</span>';
+        } else if (l.total_pembayaran_diverifikasi > 0) {
+          suffix = ' <span class="text-emerald-300 text-base">✓</span>';
+        }
+        totalHartaEl.innerHTML = formatRupiah(l.total_harta) + suffix;
+      }
+
+      // ── BMT ──
+      const elIdr  = document.getElementById('view-bmt-idr');
+      const elEmas = document.getElementById('view-bmt-emas');
+      if (elIdr)  elIdr.innerText  = formatRupiah(l.saldo_bmt_idr || 0);
+      if (elEmas) elEmas.innerText = l.saldo_bmt_emas || '0.0000';
+
+      // ── Laporan detail (tab Audit) ──
+      const lap = document.getElementById('laporan-detail');
+      if (lap) {
+        lap.innerHTML = `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;"><span>Harta Bersih:</span><strong>${formatRupiah(l.total_penghasilan)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Pembayaran Dibayar:</span><strong>${formatRupiah(l.total_pembayaran_dibayar || 0)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#059669;"><span>Pembayaran Diverifikasi:</span><strong>${formatRupiah(l.total_pembayaran_diverifikasi || 0)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#dc2626;"><span>Zakat Maal & Tani:</span><strong>${formatRupiah(l.total_zakat)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;color:#d97706;"><span>Khumus:</span><strong>${formatRupiah(l.total_khumus)}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;color:#059669;font-weight:bold;"><span>Status:</span><span>${l.zakat_penghasilan_wajib ? 'Muzakki Wajib' : 'Muzakki Baseline'}</span></div>`;
+      }
+
+      // ── Status Haul ──
+      const infoEl   = document.getElementById('info-haul');
+      const detailEl = document.getElementById('info-haul-detail');
+      if (infoEl && detailEl) {
+        if (l.haul_terpenuhi) {
+          infoEl.innerText = '✅ Haul Terpenuhi';
+          infoEl.className = 'font-bold text-emerald-300';
+          detailEl.innerText = `Zakat maal wajib: ${formatRupiah(l.zakat_maal_wajib)}`;
+        } else if (l.tanggal_mulai_haul) {
+          infoEl.innerText = '⏳ Belum Haul';
+          infoEl.className = 'font-bold text-amber-300';
+          detailEl.innerText = `Sisa ${l.sisa_hari_haul} hari (mulai ${l.tanggal_mulai_haul})`;
+        } else {
+          infoEl.innerText = '🆕 Belum ada data';
+          infoEl.className = 'font-bold text-slate-600';
+          detailEl.innerText = 'Input data pertama Anda untuk mulai haul';
+        }
+      }
+
+      // ── Toggle khumus ──
+      const toggleKhumusEl = document.getElementById('toggle-khumus');
+      if (toggleKhumusEl && typeof l.khumus_aktif !== 'undefined') {
+        toggleKhumusEl.checked = l.khumus_aktif;
+      }
+
+      // ── Buka kunci dulu, baru refresh preview ──
+      // (hitungPreviewForm tidak punya guard isProcessing, tapi tetap
+      //  lebih aman endProcessing dulu agar tidak ada race condition
+      //  dengan fungsi lain yang mungkin mengecek isProcessing)
+      endProcessing();
+
+      try { hitungZakatOtomatis(); }
+      catch(e) { console.log('refresh preview error:', e); }
+    })
+    .catch(e => { endProcessing(); console.log('Init kosong', e); });
+}
+
+// =====================================================================
+// TOGGLE KHUMUS
+// =====================================================================
+function toggleKhumus(el) {
+  const aktif = el.checked;
+  if (!aktif) {
+    const konfirmasi = confirm(
+      "⚠️ PERINGATAN\n\n" +
+      "Khumus (1/5 harta) adalah kewajiban yang diatur dalam QS. Al-Anfal: 41:\n\n" +
+      "\"Ketahuilah, sesungguhnya apa saja yang dapat kamu peroleh sebagai rampasan perang, " +
+      "maka sesungguhnya seperlima untuk Allah, Rasul, kerabat Rasul, anak-anak yatim, " +
+      "orang-orang miskin dan ibnussabil...\"\n\n" +
+      "Apakah Anda yakin ingin menonaktifkan perhitungan khumus?"
+    );
+    if (!konfirmasi) { el.checked = true; return; }
+  }
+  fetch('/api/config/khumus', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({user_id: userId, aktif: aktif})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.status === 'success') { hitungZakatOtomatis(); muatDataPusat(); }
+    else { alert('Gagal: ' + d.message); el.checked = !aktif; }
+  })
+  .catch(e => { alert('Error: ' + e); el.checked = !aktif; });
+}
+
+// =====================================================================
+// SIMPAN DATA SYARIAH
+// =====================================================================
+async function simpanDataSyariah() {
+  const mewahVal = parseFloat(document.getElementById('f-mewah').value) || 0;
+  const tipeMewah = document.getElementById('f-tipe-mewah').value;
+  const nilaiMewahRupiah = (tipeMewah === 'gram') ? (mewahVal * HARGA_EMAS_BASE) : mewahVal;
+
+  const payload = {
+    user_id: userId,
+    jenis: 'jurnal_web',
+    gaji: parseFloat(document.getElementById('f-gaji').value) || 0,
+    hadiah: parseFloat(document.getElementById('f-hadiah').value) || 0,
+    pertanian_kg: parseFloat(document.getElementById('f-tani').value) || 0,
+    jenis_pengairan: document.getElementById('f-pengairan').value,
+    benda_mewah: nilaiMewahRupiah,
+    temuan_laut_karun: parseFloat(document.getElementById('f-temuan').value) || 0,
+    simpanan_bmt_idr: parseFloat(document.getElementById('f-bmt').value) || 0,
+    pengeluaran_rutin: parseFloat(document.getElementById('f-rutin').value) || 0,
+    pengeluaran_sekolah: parseFloat(document.getElementById('f-sekolah').value) || 0,
+    pengeluaran_utang: parseFloat(document.getElementById('f-utang').value) || 0,
+    pengeluaran_sedekah: parseFloat(document.getElementById('f-sedekah').value) || 0,
+  };
+
+  const adaIsi = Object.entries(payload).some(([k, v]) =>
+    k !== 'user_id' && k !== 'jenis' && typeof v === 'number' && v > 0
+  );
+  if (!adaIsi) {
+    alert('⚠️ Isi minimal satu field terlebih dahulu.');
+    return;
+  }
+
+  beginProcessing();
+  const editId = window._editJurnalId || null;
+
+  try {
+    const url = editId ? '/api/input/syariah/' + editId : '/api/input/syariah';
+    const method = editId ? 'PUT' : 'POST';
+
+    const r = await fetch(url, {
+      method: method,
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+
+    if (d.status !== 'success') throw new Error(d.message || 'Gagal simpan');
+
+    alert(editId
+      ? '✅ Data jurnal berhasil diperbarui!\n\nPerhitungan zakat & khumus telah disesuaikan.'
+      : '✅ Data berhasil disimpan!\n\nData ini akan menjadi dasar perhitungan zakat, khumus, dan potensi kewajiban lainnya.');
+
+    resetForm();
+    clearFormDirty();
+    await muatRiwayatJurnal();
+    await muatDataPusat();
+    hitungZakatOtomatis();
+  } catch(err) {
+    alert('❌ ' + err.message);
+  } finally {
+    endProcessing();
+  }
+}
+
+// =====================================================================
+// RESET FORM
+// =====================================================================
+
+function resetForm() {
+  ['f-gaji','f-hadiah','f-tani','f-mewah','f-temuan','f-bmt',
+   'f-rutin','f-sekolah','f-utang','f-sedekah'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = 0;
+  });
+
+  const pengairanEl = document.getElementById('f-pengairan');
+  if (pengairanEl) pengairanEl.value = 'irigasi';
+
+  const tipeMewahEl = document.getElementById('f-tipe-mewah');
+  if (tipeMewahEl) tipeMewahEl.value = 'gram';
+
+  // ── Reset edit state ──
+  window._editJurnalId          = null;
+  window._editJurnalKhumusKotor = 0;
+
+  const banner = document.getElementById('edit-mode-banner');
+  if (banner) banner.classList.add('hidden');
+
+  const editIdEl = document.getElementById('edit-jurnal-id');
+  if (editIdEl) editIdEl.textContent = '-';
+
+  const btnText = document.getElementById('btn-simpan-text');
+  const btnSub  = document.getElementById('btn-simpan-sub');
+  if (btnText) btnText.textContent = 'SIMPAN DATA';
+  if (btnSub)  btnSub.textContent  = 'Tanpa bayar dulu';
+
+  // ── Reset sticky bar + preview ──
+  clearFormDirty();
+  hitungZakatOtomatis();
+}
+
+// =====================================================================
+// RIWAYAT JURNAL
+// =====================================================================
+async function muatRiwayatJurnal() {
+  const listEl = document.getElementById('jurnal-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/jurnal/' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ Gagal memuat</p>';
+      return;
+    }
+
+    const jurnal = d.jurnal || [];
+    if (jurnal.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">Belum ada data tersimpan. Isi form di atas lalu klik 💾 Simpan Data.</p>';
+      return;
+    }
+
+    listEl.innerHTML = jurnal.map(j => {
+      const totalMasuk = (j.gaji||0)+(j.hadiah||0)+((j.pertanian_kg||0)*HARGA_TANI_PER_KG)+(j.benda_mewah||0)+(j.temuan_laut_karun||0)+(j.simpanan_bmt_idr||0);
+      const totalKeluar = (j.pengeluaran_rutin||0)+(j.pengeluaran_sekolah||0)+(j.pengeluaran_utang||0)+(j.pengeluaran_sedekah||0);
+      const netto = totalMasuk - totalKeluar;
+      const isEdit = window._editJurnalId === j.id;
+      const borderClass = isEdit ? 'border-amber-400 ring-2 ring-amber-200' : 'border-slate-200';
+
+      return `
+        <div class="bg-slate-50 border-2 ${borderClass} rounded-xl p-3 space-y-1">
+          <div class="flex justify-between items-start gap-2">
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] text-slate-500 font-bold">
+                📅 ${j.tgl || '-'} ${j.edit_count > 0 ? `<span class="text-amber-600">• diedit ${j.edit_count}x</span>` : ''}
+              </p>
+              <p class="text-xs font-black text-emerald-700">➕ Masuk: ${formatRupiah(totalMasuk)}</p>
+              <p class="text-xs font-bold text-rose-600">➖ Keluar: ${formatRupiah(totalKeluar)}</p>
+              <p class="text-xs font-black ${netto >= 0 ? 'text-slate-800' : 'text-rose-700'} pt-1 border-t border-slate-200 mt-1">
+                = Netto: ${formatRupiah(netto)}
+              </p>
+            </div>
+            <div class="flex flex-col gap-1 flex-shrink-0">
+              <button onclick="editJurnal(${j.id})" class="text-[9px] bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded font-bold whitespace-nowrap">✏️ Edit</button>
+              <button onclick="hapusJurnal(${j.id})" class="text-[9px] bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded font-bold whitespace-nowrap">🗑 Hapus</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + e.message + '</p>';
+  }
+}
+
+// =====================================================================
+// EDIT JURNAL
+// =====================================================================
+async function editJurnal(jurnalId) {
+  try {
+    const r = await fetch('/api/jurnal/' + userId + '/' + jurnalId);
+    const d = await r.json();
+
+    if (d.status !== 'success' || !d.jurnal) {
+      const rAll = await fetch('/api/jurnal/' + userId);
+      const dAll = await rAll.json();
+      const j = (dAll.jurnal || []).find(x => x.id === jurnalId);
+      if (!j) { alert('❌ Data tidak ditemukan'); return; }
+      isiFormDariJurnal(j);
+    } else {
+      isiFormDariJurnal(d.jurnal);
+    }
+  } catch(e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+// =====================================================================
+// ISI FORM DARI JURNAL (untuk mode edit)
+// =====================================================================
+
+function isiFormDariJurnal(j) {
+  document.getElementById('f-gaji').value          = j.gaji || 0;
+  document.getElementById('f-hadiah').value        = j.hadiah || 0;
+  document.getElementById('f-tani').value          = j.pertanian_kg || 0;
+  document.getElementById('f-pengairan').value     = j.jenis_pengairan || 'irigasi';
+  document.getElementById('f-mewah').value         = j.benda_mewah || 0;
+  document.getElementById('f-tipe-mewah').value    = 'rupiah';
+  document.getElementById('f-temuan').value        = j.temuan_laut_karun || 0;
+  document.getElementById('f-bmt').value           = j.simpanan_bmt_idr || 0;
+  document.getElementById('f-rutin').value         = j.pengeluaran_rutin || 0;
+  document.getElementById('f-sekolah').value       = j.pengeluaran_sekolah || 0;
+  document.getElementById('f-utang').value         = j.pengeluaran_utang || 0;
+  document.getElementById('f-sedekah').value       = j.pengeluaran_sedekah || 0;
+
+  // ── Hitung kontribusi khumus dari jurnal ini ──
+  // (supaya preview bisa kurangi kontribusi lama saat edit)
+  const temuanLama    = Number(j.temuan_laut_karun) || 0;
+  const gajiLama      = Number(j.gaji) || 0;
+  const hadiahLama    = Number(j.hadiah) || 0;
+  const keluarLama    = (Number(j.pengeluaran_rutin)    || 0)
+                      + (Number(j.pengeluaran_sekolah)  || 0)
+                      + (Number(j.pengeluaran_utang)    || 0)
+                      + (Number(j.pengeluaran_sedekah)  || 0);
+  const surplusLama   = Math.max(0, (gajiLama + hadiahLama) - keluarLama);
+  const khumusLama    = (temuanLama * KADAR_KHUMUS) + (surplusLama * KADAR_KHUMUS);
+
+  window._editJurnalKhumusKotor = khumusLama;
+
+  // ── Set edit state ──
+  window._editJurnalId = j.id;
+  const banner   = document.getElementById('edit-mode-banner');
+  const editIdEl = document.getElementById('edit-jurnal-id');
+  if (banner)   banner.classList.remove('hidden');
+  if (editIdEl) editIdEl.textContent = j.id;
+
+  const btnText = document.getElementById('btn-simpan-text');
+  const btnSub  = document.getElementById('btn-simpan-sub');
+  if (btnText) btnText.textContent = 'UPDATE DATA';
+  if (btnSub)  btnSub.textContent  = 'Edit jurnal #' + j.id;
+
+  // ── Hitung ulang preview (mode edit) ──
+  // Tandai dirty supaya preview pakai form, bukan DB
+  window._formDirty = true;
+  hitungZakatOtomatis();
+  updateStickySaveBar();
+  muatRiwayatJurnal();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// =====================================================================
+// HAPUS JURNAL
+// =====================================================================
+async function hapusJurnal(jurnalId) {
+  if (!confirm('⚠️ Hapus data jurnal ini?\n\nData akan dinonaktifkan (soft delete) dan tidak dihitung lagi dalam zakat/khumus. Riwayat tetap tersimpan untuk audit.')) return;
+
+  try {
+    const r = await fetch('/api/input/syariah/' + jurnalId + '?user_id=' + userId, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Data dihapus. Perhitungan zakat & khumus telah disesuaikan.');
+      if (window._editJurnalId === jurnalId) resetForm();
+      await muatRiwayatJurnal();
+      await muatDataPusat();
+      hitungZakatOtomatis();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch(e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+// =====================================================================
+// SETOR ZAKAT/KHUMUS/INFAQ
+// =====================================================================
+
+function prosesSetorZakat() {
+  const zakatNum = parseInt(document.getElementById('est-zakat').innerText.replace(/[^0-9]/g, '')) || 0;
+  if (zakatNum <= 0) { alert('Tidak ada zakat yang wajib disetor saat ini.'); return; }
+  if (!cekFormBelumDisimpan()) return;
+  mulaiSetor('zakat_maal', zakatNum);
+}
+
+function prosesSetorKhumus() {
+  const khumusNum = parseInt(document.getElementById('est-khumus').innerText.replace(/[^0-9]/g, '')) || 0;
+  if (khumusNum <= 0) { alert('Tidak ada khumus yang wajib disetor saat ini.'); return; }
+  if (!cekFormBelumDisimpan()) return;
+  mulaiSetor('khumus', khumusNum);
+}
+
+async function prosesSetorInfaq() {
+  const input = prompt("Masukkan nominal Infaq/Sedekah (Rp):\n\nCatatan: Harta Anda baru akan dipotong setelah Anda menyelesaikan proses transfer.", "100000");
+  if (!input) return;
+  const nominal = parseFloat(input);
+  if (isNaN(nominal) || nominal <= 0) { alert("⚠️ Nominal tidak valid."); return; }
+  if (!cekFormBelumDisimpan()) return;
+  mulaiSetor('infaq', nominal);
+}
+
+function cekFormBelumDisimpan() {
+  if (!window._formDirty) return true; // tidak ada perubahan, lanjut
+
+  return confirm(
+    '⚠️ Anda memiliki data form yang BELUM DISIMPAN.\n\n' +
+    'Data yang belum disimpan TIDAK akan mempengaruhi perhitungan zakat/khumus.\n\n' +
+    'Klik OK untuk lanjut setor tanpa menyimpan.\n' +
+    'Klik Cancel untuk kembali dan simpan dulu.'
+  );
+}
+
+function kirimKeBot(data, sisa) {
+  const status  = document.getElementById('overlay-status');
+  const box     = document.getElementById('overlay-status-box');
+  const spinner = document.getElementById('overlay-spinner');
+  const check   = document.getElementById('overlay-check');
+
+  try {
+    if (!window.Telegram?.WebApp) { status.innerText = '⚠️ Bukan di Telegram (mode browser).'; return; }
+    window.Telegram.WebApp.sendData(JSON.stringify(data));
+    try { window.Telegram.WebApp.HapticFeedback?.notificationOccurred('success'); } catch(e) {}
+
+    spinner.style.display = 'none';
+    check.style.display = 'flex';
+    box.className = 'flex items-center gap-3 bg-emerald-100 border border-emerald-300 rounded-xl p-3';
+    status.innerText = '✅ Terkirim ke bot. Silakan tunggu balasan admin di chat Telegram.';
+    status.className = 'text-xs font-bold text-emerald-900 leading-snug';
+  } catch(e) {
+    console.error('sendData gagal:', e);
+    if (sisa > 0) {
+      status.innerText = `⚠️ Coba ulang (${sisa})...`;
+      setTimeout(() => kirimKeBot(data, sisa-1), 1000);
+    } else {
+      spinner.style.display = 'none';
+      box.className = 'flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-xl p-3';
+      status.innerText = '⚠️ Gagal kirim ke bot.';
+      status.className = 'text-xs font-bold text-rose-800 leading-snug';
+    }
+  }
+}
+
+function tutupAplikasi() {
+  try {
+    if (window.Telegram?.WebApp) window.Telegram.WebApp.close();
+    else document.getElementById('success-overlay').style.display = 'none';
+  } catch (e) { console.log('Close error (diabaikan):', e); }
+}
+
+// =====================================================================
+// ALUR SETOR (Modal 3 Langkah)
+// =====================================================================
+let setorState = {
+  lembagaId: null, lembagaNama: null,
+  rekeningId: null, rekeningInfo: null,
+  jenis: 'zakat_maal', nominal: 0,
+};
+
+async function mulaiSetor(jenis, nominal) {
+  if (!nominal || nominal <= 0) { alert('⚠️ Tidak ada kewajiban untuk disetor.'); return; }
+
+  setorState = { lembagaId: null, lembagaNama: null, rekeningId: null, rekeningInfo: null, jenis: jenis, nominal: nominal };
+
+  const modal = document.getElementById('modal-pilih-lembaga');
+  const list  = document.getElementById('modal-lembaga-list');
+  modal.style.display = 'flex';
+  list.innerHTML = '<p class="text-center text-slate-600 text-xs py-8">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/lembaga');
+    const d = await r.json();
+    if (d.status !== 'success' || !d.lembaga || d.lembaga.length === 0) {
+      list.innerHTML = '<p class="text-center text-rose-600 text-xs py-8">❌ Tidak ada lembaga terverifikasi</p>';
+      return;
+    }
+
+    list.innerHTML = d.lembaga.map(l => `
+      <div onclick="pilihLembaga(${l.id}, '${l.nama.replace(/'/g, "\\'")}')" class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-3 cursor-pointer hover:bg-emerald-100 transition">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="font-black text-slate-800 text-sm">${l.nama}</p>
+            <p class="text-[10px] text-slate-500">${l.jenis}${l.is_default ? ' • DEFAULT' : ''}</p>
+          </div>
+          <span class="text-emerald-600 text-lg">›</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<p class="text-center text-rose-600 text-xs py-8">❌ ' + e.message + '</p>';
+  }
+}
+
+function tutupModalLembaga() { document.getElementById('modal-pilih-lembaga').style.display = 'none'; }
+
+async function pilihLembaga(lembagaId, lembagaNama) {
+  setorState.lembagaId = lembagaId;
+  setorState.lembagaNama = lembagaNama;
+  tutupModalLembaga();
+
+  const modal = document.getElementById('modal-pilih-rekening');
+  const list  = document.getElementById('modal-rekening-list');
+  modal.style.display = 'flex';
+  list.innerHTML = '<p class="text-center text-slate-600 text-xs py-8">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/lembaga/' + lembagaId + '/rekening');
+    const d = await r.json();
+    if (d.status !== 'success' || !d.rekening || d.rekening.length === 0) {
+      list.innerHTML = '<p class="text-center text-rose-600 text-xs py-8">❌ Lembaga belum punya rekening aktif</p>';
+      return;
+    }
+
+    list.innerHTML = d.rekening.map(rek => `
+      <div onclick="pilihRekening(${rek.id}, '${(rek.nama_bank || '')} - ${rek.nomor_rekening || ''} a.n. ${(rek.atas_nama || '').replace(/'/g, "\\'")}')" class="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 cursor-pointer hover:bg-blue-100 transition">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="font-black text-slate-800 text-sm">${rek.nama_bank || '-'}</p>
+            <p class="text-xs font-mono text-slate-700">${rek.nomor_rekening || '-'}</p>
+            <p class="text-[10px] text-slate-500">a.n. ${rek.atas_nama || '-'}</p>
+          </div>
+          <span class="text-blue-600 text-lg">›</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<p class="text-center text-rose-600 text-xs py-8">❌ ' + e.message + '</p>';
+  }
+}
+
+function tutupModalRekening() { document.getElementById('modal-pilih-rekening').style.display = 'none'; }
+
+function pilihRekening(rekId, rekInfo) {
+  setorState.rekeningId = rekId;
+  setorState.rekeningInfo = rekInfo;
+  tutupModalRekening();
+
+  document.getElementById('konf-lembaga').innerText = setorState.lembagaNama;
+  document.getElementById('konf-rekening').innerText = setorState.rekeningInfo;
+  document.getElementById('konf-jenis').innerText = setorState.jenis.replace('_', ' ').toUpperCase();
+  document.getElementById('konf-nominal').innerText = formatRupiah(setorState.nominal);
+  document.getElementById('konf-file-bukti').value = '';
+  document.getElementById('konf-catatan').value = '';
+
+  document.getElementById('modal-konfirmasi-setor').style.display = 'flex';
+}
+
+function tutupModalKonfirmasi() { document.getElementById('modal-konfirmasi-setor').style.display = 'none'; }
+
+async function prosesSetor() {
+  const fileInput = document.getElementById('konf-file-bukti');
+  const catatan = document.getElementById('konf-catatan').value.trim();
+  const btn = document.getElementById('btn-proses-setor');
+
+  if (!fileInput.files || !fileInput.files[0]) { alert('⚠️ Mohon upload bukti transfer.'); return; }
+
+  const file = fileInput.files[0];
+  if (file.size > 3 * 1024 * 1024) {
+    alert('⚠️ Ukuran file terlalu besar (maksimal 3 MB). Silakan kompres gambar Anda terlebih dahulu.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = '⏳ Memproses...';
+
+  try {
+    const rRencana = await fetch('/api/rencana-pembayaran', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        user_id: userId,
+        jenis_kewajiban: setorState.jenis,
+        nominal: setorState.nominal,
+        lembaga_id: setorState.lembagaId,
+        rekening_id: setorState.rekeningId,
+        keterangan: 'Setor via Mini App',
+        catatan_user: catatan,
+      })
+    });
+    const dRencana = await rRencana.json();
+    if (dRencana.status !== 'success') throw new Error(dRencana.message || 'Gagal buat rencana');
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('user_id', userId);
+
+    const rUpload = await fetch('/api/rencana-pembayaran/' + dRencana.rencana_id + '/upload-bukti', {
+      method: 'POST', body: formData
+    });
+    const dUpload = await rUpload.json();
+    if (dUpload.status !== 'success') throw new Error(dUpload.message || 'Gagal upload bukti');
+
+    tutupModalKonfirmasi();
+
+    if (setorState.jenis === 'infaq') {
+      try {
+        await fetch('/api/input/syariah', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ user_id: userId, jenis: 'infaq_web', pengeluaran_sedekah: setorState.nominal })
+        });
+      } catch(e) { console.log('Gagal potong harta:', e); }
+
+      alert('✅ Infaq berhasil disalurkan ke ' + setorState.lembagaNama + '.\n\nTerima kasih atas amal jariyah Anda.');
+      hitungZakatOtomatis();
+      muatDataPusat();
+      muatRiwayatJurnal();
+      return;
+    }
+
+    document.getElementById('overlay-zakat').innerText  = formatRupiah(setorState.jenis === 'khumus' ? 0 : setorState.nominal);
+    document.getElementById('overlay-khumus').innerText = formatRupiah(setorState.jenis === 'khumus' ? setorState.nominal : 0);
+    document.getElementById('success-overlay').style.display = 'flex';
+    document.getElementById('overlay-status').innerText = '✅ Setoran terkirim ke ' + setorState.lembagaNama + '. Menunggu verifikasi admin.';
+
+    const dataBot = { layanan: 'SETOR_ZAKAT', jenis: setorState.jenis, nominal: setorState.nominal, lembaga: setorState.lembagaNama, rencana_id: dRencana.rencana_id, ts: Date.now() };
+    setTimeout(() => kirimKeBot(dataBot, 3), 2500);
+
+    muatDataPusat();
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = '✅ Konfirmasi & Kirim';
+  }
+}
+
+// =====================================================================
+// TAGIHAN
+// =====================================================================
+let tagihanCache = [];
+
+async function muatTagihan() {
+  const listEl = document.getElementById('tagihan-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/tagihan/' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + (d.message || 'Gagal') + '</p>';
+      return;
+    }
+
+    tagihanCache = d.tagihan || [];
+    if (tagihanCache.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2">Belum ada tagihan. Klik "Tambah Tagihan Baru".</p>';
+      return;
+    }
+
+    const icons = { listrik:'⚡', air:'💧', internet:'🌐', pulsa:'📱', cicilan:'🏠', iuran:'👥', hutang:'💳', lainnya:'📦' };
+    const statusBadge = (status) => {
+      if (status === 'lunas') return '<span class="bg-emerald-500 text-white text-[9px] font-bold px-2 py-1 rounded-full">✅ LUNAS</span>';
+      if (status === 'terlambat') return '<span class="bg-rose-500 text-white text-[9px] font-bold px-2 py-1 rounded-full">⚠️ TERLAMBAT</span>';
+      return '<span class="bg-amber-500 text-white text-[9px] font-bold px-2 py-1 rounded-full">⏳ BELUM LUNAS</span>';
+    };
+
+    listEl.innerHTML = tagihanCache.map(t => `
+      <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">${icons[t.jenis] || '📦'} ${t.jenis.toUpperCase()}</p>
+            <p class="text-sm font-black text-slate-800">${t.nama}</p>
+            <p class="text-base font-black text-blue-700">${formatRupiah(t.nominal)}</p>
+            ${t.jatuh_tempo ? `<p class="text-[10px] text-slate-500">Jatuh tempo: ${t.jatuh_tempo}</p>` : ''}
+            ${t.frekuensi !== 'sekali' ? `<p class="text-[10px] text-slate-400">${t.frekuensi}</p>` : ''}
+          </div>
+          ${statusBadge(t.status)}
+        </div>
+        ${t.catatan ? `<p class="text-[10px] text-slate-500 italic">📝 ${t.catatan}</p>` : ''}
+        ${t.bukti_bayar_url ? `<a href="${t.bukti_bayar_url}" target="_blank" class="text-[10px] text-blue-600 underline">📎 Lihat Bukti</a>` : ''}
+        <div class="flex gap-1 pt-2 border-t">
+          ${t.status !== 'lunas' ? `<button onclick="bukaUploadBukti(${t.id})" class="flex-1 text-[9px] bg-blue-500 text-white py-1 rounded font-bold">📎 Bayar</button>` : ''}
+          <button onclick="editTagihanForm(${t.id})" class="flex-1 text-[9px] bg-slate-400 text-white py-1 rounded font-bold">✏️ Edit</button>
+          <button onclick="hapusTagihan(${t.id})" class="flex-1 text-[9px] bg-rose-500 text-white py-1 rounded font-bold">🗑 Hapus</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + e.message + '</p>';
+  }
+
+  muatSummaryTagihan();
+}
+
+async function muatSummaryTagihan() {
+  try {
+    const r = await fetch('/api/tagihan/' + userId + '/summary');
+    const d = await r.json();
+    if (d.status !== 'success') return;
+    const s = d.summary;
+    document.getElementById('tagihan-summary-total').innerText  = formatRupiah(s.total_nominal);
+    document.getElementById('tagihan-summary-lunas').innerText  = formatRupiah(s.total_lunas);
+    document.getElementById('tagihan-summary-belum').innerText = formatRupiah(s.total_belum_lunas);
+  } catch (e) { console.log('Summary error:', e); }
+}
+
+function bukaFormTambahTagihan() {
+  document.getElementById('modal-tagihan-title').innerText = '➕ Tambah Tagihan';
+  document.getElementById('tagihan-id-edit').value = '';
+  document.getElementById('tagihan-jenis').value = 'listrik';
+  document.getElementById('tagihan-nama').value = '';
+  document.getElementById('tagihan-nominal').value = '';
+  document.getElementById('tagihan-jatuh-tempo').value = '';
+  document.getElementById('tagihan-frekuensi').value = 'sekali';
+  document.getElementById('tagihan-catatan').value = '';
+  document.getElementById('modal-tagihan').style.display = 'flex';
+}
+
+function editTagihanForm(id) {
+  const t = tagihanCache.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('modal-tagihan-title').innerText = '✏️ Edit Tagihan';
+  document.getElementById('tagihan-id-edit').value = t.id;
+  document.getElementById('tagihan-jenis').value = t.jenis;
+  document.getElementById('tagihan-nama').value = t.nama;
+  document.getElementById('tagihan-nominal').value = t.nominal;
+  document.getElementById('tagihan-jatuh-tempo').value = t.jatuh_tempo || '';
+  document.getElementById('tagihan-frekuensi').value = t.frekuensi;
+  document.getElementById('tagihan-catatan').value = t.catatan || '';
+  document.getElementById('modal-tagihan').style.display = 'flex';
+}
+
+function tutupFormTagihan() { document.getElementById('modal-tagihan').style.display = 'none'; }
+
+async function simpanTagihan() {
+  const id = document.getElementById('tagihan-id-edit').value;
+  const jenis = document.getElementById('tagihan-jenis').value;
+  const nama = document.getElementById('tagihan-nama').value.trim();
+  const nominal = parseFloat(document.getElementById('tagihan-nominal').value) || 0;
+  const jatuh = document.getElementById('tagihan-jatuh-tempo').value;
+  const frek = document.getElementById('tagihan-frekuensi').value;
+  const catatan = document.getElementById('tagihan-catatan').value.trim();
+
+  if (!nama || nominal <= 0) { alert('⚠️ Nama & nominal wajib diisi.'); return; }
+
+  const payload = { user_id: userId, jenis, nama, nominal, jatuh_tempo: jatuh || null, frekuensi: frek, catatan };
+  const url = id ? '/api/tagihan/' + id : '/api/tagihan';
+  const method = id ? 'PUT' : 'POST';
+
+  try {
+    const r = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Tagihan ' + (id ? 'diperbarui' : 'ditambahkan'));
+      tutupFormTagihan();
+      muatTagihan();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function hapusTagihan(id) {
+  if (!confirm('Hapus tagihan ini?')) return;
+  try {
+    const r = await fetch('/api/tagihan/' + id, {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: userId })
+    });
+    const d = await r.json();
+    if (d.status === 'success') { alert('✅ Tagihan dihapus'); muatTagihan(); }
+    else { alert('❌ ' + d.message); }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+function bukaUploadBukti(id) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.jpg,.jpeg,.png,.pdf,.webp';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('user_id', userId);
+    formData.append('metode_bayar', 'transfer');
+
+    try {
+      const r = await fetch('/api/tagihan/' + id + '/upload-bukti', { method: 'POST', body: formData });
+      const d = await r.json();
+      if (d.status === 'success') { alert('✅ Tagihan ditandai LUNAS'); muatTagihan(); }
+      else { alert('❌ ' + d.message); }
+    } catch (e) { alert('❌ ' + e.message); }
+  };
+  input.click();
+}
+
+// =====================================================================
+// DAFTAR LEMBAGA
+// =====================================================================
+let currentLembagaId = null;
+
+async function cekStatusLembaga() {
+  try {
+    const r = await fetch('/api/lembaga/status/' + userId);
+    const d = await r.json();
+    const statusBox = document.getElementById('daftar-status-box');
+    const formBox   = document.getElementById('daftar-form-box');
+    const statusContent = document.getElementById('daftar-status-content');
+
+    if (d.kondisi === 'belum_terdaftar' || d.kondisi === 'bukan_admin_lembaga') {
+      if (statusBox) statusBox.style.display = 'none';
+      if (formBox) formBox.style.display = 'block';
+      return;
+    }
+
+    if (statusBox) statusBox.style.display = 'block';
+    if (formBox) formBox.style.display = 'none';
+
+    const lem = d.lembaga;
+    const statusColor = {'pending':'text-amber-600','verified':'text-emerald-600','rejected':'text-rose-600','suspended':'text-rose-600'}[lem.status] || 'text-slate-600';
+    const statusLabel = {'pending':'⏳ Menunggu Verifikasi','verified':'✅ Terverifikasi','rejected':'❌ Ditolak','suspended':'⚠️ Disuspend'}[lem.status] || lem.status;
+
+    let tahapHtml = '';
+    if (d.verifikasi && d.verifikasi.length > 0) {
+      tahapHtml = '<div class="mt-3 pt-3 border-t border-slate-100"><p class="font-bold text-slate-700 mb-1">Riwayat Verifikasi:</p>' +
+        d.verifikasi.map(v => {
+          const icon = v.status === 'lolos' ? '✅' : v.status === 'gagal' ? '❌' : '⏳';
+          return `<div class="flex justify-between text-[10px] py-1"><span>${icon} ${v.tahap}</span><span class="text-slate-500">${v.catatan || '-'}</span></div>`;
+        }).join('') + '</div>';
+    }
+
+    if (statusContent) {
+      statusContent.innerHTML = `
+        <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Nama</span><strong>${lem.nama}</strong></div>
+        <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Jenis</span><strong>${lem.jenis}</strong></div>
+        <div class="flex justify-between border-b pb-2"><span class="text-slate-500">Status</span><strong class="${statusColor}">${statusLabel}</strong></div>
+        ${lem.kode_verifikasi ? `<div class="flex justify-between border-b pb-2"><span class="text-slate-500">Kode Verifikasi</span><strong>${lem.kode_verifikasi}</strong></div>` : ''}
+        ${tahapHtml}
+        ${lem.status === 'verified' ? '<p class="mt-3 text-[10px] text-emerald-600 font-bold text-center">🎉 Anda kini admin lembaga resmi.</p>' : ''}
+        ${lem.status === 'pending' ? '<p class="mt-3 text-[10px] text-amber-600 text-center">Tim Raudha akan menghubungi Anda via WhatsApp.</p>' : ''}
+      `;
+    }
+
+    const dashBox = document.getElementById('lembaga-dashboard-box');
+    if (dashBox) {
+      if (lem.status === 'verified') {
+        dashBox.style.display = 'block';
+        currentLembagaId = lem.id;
+        muatRekeningAdmin();
+        loadAgenda();
+      } else {
+        dashBox.style.display = 'none';
+      }
+    }
+
+    const pembayaranBox = document.getElementById('lembaga-pembayaran-box');
+    if (pembayaranBox) {
+      if (lem.status === 'verified') {
+        pembayaranBox.style.display = 'block';
+        muatPembayaranMasuk();
+      } else {
+        pembayaranBox.style.display = 'none';
+      }
+    }
+  } catch (e) { console.log('Error cek status lembaga:', e); }
+}
+
+async function submitDaftarLembaga() {
+  const btn = document.getElementById('btn-daftar-submit');
+  const uploadStatus = document.getElementById('dl-upload-status');
+
+  const nama = document.getElementById('dl-nama').value.trim();
+  const jenis = document.getElementById('dl-jenis').value;
+  const npwp = document.getElementById('dl-npwp').value.trim();
+  const alamat = document.getElementById('dl-alamat').value.trim();
+  const telepon = document.getElementById('dl-telepon').value.trim();
+  const email = document.getElementById('dl-email').value.trim();
+  const adminNama = document.getElementById('dl-admin-nama').value.trim();
+  const adminWa = document.getElementById('dl-admin-wa').value.trim();
+
+  if (!nama || !npwp || !alamat || !telepon || !email || !adminNama || !adminWa) {
+    alert('⚠️ Mohon isi semua field bertanda *.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span><span>Mengirim...</span>';
+
+  try {
+    let dokumenUrl = '';
+    const fileInput = document.getElementById('dl-file');
+    if (fileInput.files && fileInput.files[0]) {
+      uploadStatus.innerText = '⏳ Mengupload dokumen...';
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      formData.append('user_id', userId);
+      formData.append('jenis_dokumen', 'dokumen_lembaga');
+      const upRes = await fetch('/api/upload/dokumen', { method: 'POST', body: formData });
+      const upData = await upRes.json();
+      if (upData.status !== 'success') {
+        uploadStatus.innerText = '❌ ' + upData.message;
+        throw new Error('Upload gagal');
+      }
+      dokumenUrl = upData.url;
+      uploadStatus.innerText = '✅ Dokumen terupload.';
+    }
+
+    const payload = {
+      user_id: userId, nama, jenis, npwp, alamat,
+      no_telepon: telepon, email_resmi: email,
+      dokumen_url: dokumenUrl,
+      nama_admin: adminNama, no_whatsapp_admin: adminWa,
+    };
+
+    const r = await fetch('/api/lembaga/daftar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+
+    if (d.status === 'success') {
+      alert('✅ Pengajuan berhasil dikirim!\n\nTim Super Admin Raudha akan menghubungi Anda via WhatsApp.');
+      cekStatusLembaga();
+    } else {
+      alert('❌ ' + d.message);
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>📤</span><span>Kirim Pengajuan Lembaga</span>';
+  }
+}
+
+// =====================================================================
+// KELOLA REKENING (Admin Lembaga)
+// =====================================================================
+async function muatRekeningAdmin() {
+  const listEl = document.getElementById('rekening-list-admin');
+  if (!listEl || !currentLembagaId) return;
+  listEl.innerHTML = '<p class="text-slate-600 text-xs text-center py-2">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/lembaga/' + currentLembagaId + '/rekening/semua?user_id=' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + (d.message || 'Gagal') + '</p>';
+      return;
+    }
+
+    if (!d.rekening || d.rekening.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-600 text-xs text-center py-2">Belum ada rekening. Tambah satu.</p>';
+      return;
+    }
+
+    listEl.innerHTML = d.rekening.map(r => `
+      <div class="bg-white border ${r.aktif ? 'border-slate-200' : 'border-slate-300 opacity-60'} rounded-xl p-3 space-y-1">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">${r.nama_bank || '-'}</p>
+            <p class="text-sm font-black text-slate-800">${r.nomor_rekening || '-'}</p>
+            <p class="text-[10px] text-slate-500">a.n. ${r.atas_nama || '-'}</p>
+            ${r.is_default ? '<span class="inline-block bg-amber-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full mt-1">DEFAULT</span>' : ''}
+            ${!r.aktif ? '<span class="inline-block bg-slate-400 text-white text-[8px] font-bold px-2 py-0.5 rounded-full mt-1">NONAKTIF</span>' : ''}
+          </div>
+          <div class="flex flex-col gap-1">
+            <button onclick="editRekening(${r.id})" class="text-[9px] bg-blue-500 text-white px-2 py-1 rounded font-bold">✏️ Edit</button>
+            <button onclick="hapusRekening(${r.id})" class="text-[9px] bg-rose-500 text-white px-2 py-1 rounded font-bold">🗑 Hapus</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + e.message + '</p>';
+  }
+}
+
+function bukaFormTambahRekening() {
+  document.getElementById('form-rekening-title').innerText = 'Tambah Rekening Baru';
+  document.getElementById('rek-id-edit').value = '';
+  document.getElementById('rek-nama-bank').value = '';
+  document.getElementById('rek-nomor').value = '';
+  document.getElementById('rek-atas-nama').value = '';
+  document.getElementById('form-rekening-box').style.display = 'block';
+}
+
+function tutupFormRekening() { document.getElementById('form-rekening-box').style.display = 'none'; }
+
+function editRekening(rekId) {
+  fetch('/api/lembaga/' + currentLembagaId + '/rekening/semua?user_id=' + userId)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'success') return;
+      const r = (d.rekening || []).find(x => x.id === rekId);
+      if (!r) return;
+      document.getElementById('form-rekening-title').innerText = 'Edit Rekening';
+      document.getElementById('rek-id-edit').value = r.id;
+      document.getElementById('rek-nama-bank').value = r.nama_bank || '';
+      document.getElementById('rek-nomor').value = r.nomor_rekening || '';
+      document.getElementById('rek-atas-nama').value = r.atas_nama || '';
+      document.getElementById('form-rekening-box').style.display = 'block';
+    });
+}
+
+async function simpanRekening() {
+  const rekId = document.getElementById('rek-id-edit').value;
+  const nama_bank = document.getElementById('rek-nama-bank').value.trim();
+  const nomor = document.getElementById('rek-nomor').value.trim();
+  const atas = document.getElementById('rek-atas-nama').value.trim();
+
+  if (!nama_bank || !nomor || !atas) { alert('⚠️ Mohon isi semua field.'); return; }
+
+  const payload = { user_id: userId, nama_bank, nomor_rekening: nomor, atas_nama: atas, metode: 'bank_transfer' };
+  const url = rekId
+    ? '/api/lembaga/' + currentLembagaId + '/rekening/' + rekId
+    : '/api/lembaga/' + currentLembagaId + '/rekening';
+  const method = rekId ? 'PUT' : 'POST';
+
+  try {
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Rekening ' + (rekId ? 'diperbarui' : 'ditambahkan'));
+      tutupFormRekening();
+      muatRekeningAdmin();
+    } else { alert('❌ ' + d.message); }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function hapusRekening(rekId) {
+  if (!confirm('⚠️ Hapus rekening ini?')) return;
+  try {
+    const r = await fetch('/api/lembaga/' + currentLembagaId + '/rekening/' + rekId, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    const d = await r.json();
+    if (d.status === 'success') { alert('✅ Rekening dihapus'); muatRekeningAdmin(); }
+    else { alert('❌ ' + d.message); }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function muatPembayaranMasuk() {
+  const listEl = document.getElementById('pembayaran-list-admin');
+  if (!listEl || !currentLembagaId) return;
+  listEl.innerHTML = '<p class="text-slate-600 text-xs text-center py-2">Memuat...</p>';
+
+  try {
+    const r = await fetch('/api/lembaga/' + currentLembagaId + '/pembayaran-masuk?user_id=' + userId);
+    const d = await r.json();
+    if (d.status !== 'success') {
+      listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + (d.message || 'Gagal') + '</p>';
+      return;
+    }
+
+    if (!d.pembayaran || d.pembayaran.length === 0) {
+      listEl.innerHTML = '<p class="text-slate-600 text-xs text-center py-2">Belum ada pembayaran masuk.</p>';
+      return;
+    }
+
+    listEl.innerHTML = d.pembayaran.map(p => {
+      const isOwn = p.user_id === userId;
+      const statusColor = p.status === 'diverifikasi' ? 'bg-emerald-500' : 'bg-amber-500';
+      const statusLabel = p.status === 'diverifikasi' ? '✅ TERVERIFIKASI' : '⏳ MENUNGGU';
+      const nominal = formatRupiah(p.nominal);
+      const jenis = (p.jenis_kewajiban || '').replace('_', ' ').toUpperCase();
+      const nama = p.nama_lengkap || ('User #' + p.user_id);
+
+      return `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <p class="text-[10px] font-bold text-slate-500 uppercase">${jenis}</p>
+              <p class="text-base font-black text-slate-800">${nominal}</p>
+              <p class="text-[10px] text-slate-500">Dari: ${nama}</p>
+              ${p.tanggal_bayar ? `<p class="text-[9px] text-slate-600">Tgl bayar: ${p.tanggal_bayar}</p>` : ''}
+            </div>
+            <span class="${statusColor} text-white text-[9px] font-bold px-2 py-1 rounded-full">${statusLabel}</span>
+          </div>
+          ${p.bukti_transfer_url ? `<a href="${p.bukti_transfer_url}" target="_blank" class="inline-block text-[10px] text-blue-600 underline font-bold">📎 Lihat Bukti</a>` : ''}
+          ${p.status === 'dibayar' ? (
+            isOwn
+              ? `<div class="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 font-bold text-center">⏳ Menunggu verifikasi admin lain (Anda pembuatnya)</div>`
+              : `<button onclick="verifikasiPembayaran(${p.id})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2 rounded-lg text-xs mt-1">✅ Verifikasi Pembayaran Ini</button>`
+          ) : ''}
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-rose-600 text-xs text-center py-2">❌ ' + e.message + '</p>';
+  }
+}
+
+async function verifikasiPembayaran(rencanaId) {
+  const catatan = prompt('Catatan verifikasi (opsional):') || '';
+  if (catatan === null) return;
+
+  try {
+    const r = await fetch('/api/rencana-pembayaran/' + rencanaId + '/verifikasi', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: userId, catatan_admin: catatan })
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Pembayaran berhasil diverifikasi');
+      muatPembayaranMasuk();
+      muatDataPusat();
+    } else { alert('❌ ' + d.message); }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+// =====================================================================
+// AGENDA MASJID
+// =====================================================================
+async function loadAgenda() {
+  const listEl = document.getElementById('agenda-list');
+  if (!listEl || !currentLembagaId) return;
+
+  try {
+    const r = await fetch(`/api/lembaga/${currentLembagaId}/agenda?user_id=${userId}`);
+    const d = await r.json();
+
+    if (d.status === 'success' && d.agenda.length > 0) {
+      listEl.innerHTML = d.agenda.map(a => `
+        <div class="flex justify-between items-center bg-white border border-slate-200 p-2 rounded-lg mb-1">
+          <div>
+            <span class="text-[9px] font-bold ${a.tipe === 'kegiatan' ? 'text-blue-600' : 'text-amber-600'} uppercase">${a.tipe}</span>
+            <p class="text-[10px] font-bold text-slate-800">${a.nama}</p>
+            <p class="text-[9px] text-slate-500">${a.tanggal}${a.pemateri ? ' • ' + a.pemateri : ''}</p>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      listEl.innerHTML = '<p class="text-[10px] text-slate-400 text-center">Belum ada agenda.</p>';
+    }
+  } catch (e) { console.log('loadAgenda error:', e); }
+}
+
+async function simpanAgenda() {
+  if (!currentLembagaId) return alert('Lembaga ID tidak ditemukan');
+
+  const payload = {
+    user_id: userId,
+    tipe: document.getElementById('agenda-tipe').value,
+    tanggal: document.getElementById('agenda-tanggal').value,
+    nama: document.getElementById('agenda-nama').value,
+    pemateri: document.getElementById('agenda-pemateri').value,
+  };
+
+  if (!payload.tanggal || !payload.nama) return alert('Tanggal dan Nama wajib diisi!');
+
+  try {
+    const r = await fetch(`/api/lembaga/${currentLembagaId}/agenda`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.status === 'success') {
+      alert('✅ Agenda ditambahkan!');
+      document.getElementById('agenda-nama').value = '';
+      document.getElementById('agenda-pemateri').value = '';
+      loadAgenda();
+    } else { alert('❌ ' + d.message); }
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+function bukaTVConfig() {
+  if (!currentLembagaId) { alert('❌ Data Lembaga tidak ditemukan. Refresh halaman ini.'); return; }
+  const NGROK_URL = 'https://brush-agreed-spookily.ngrok-free.dev';
+  const url = `${NGROK_URL}/admin/tv?lembaga_id=${currentLembagaId}&user_id=${userId}`;
+  window.open(url, '_blank');
+}
+
+// =====================================================================
+// BAHASA & PDF & ONBOARDING
+// =====================================================================
+const TRANSLATIONS = {
+  id: { 'tab.zakat':'💰 Zakat', 'tab.bmt':'🪙 BMT', 'tab.audit':'📊 Audit', 'tab.lembaga':'🏛️ Lembaga', 'btn.setor':'SETOR ZAKAT SEKARANG', 'btn.setor_sub':'Bayar ke lembaga amil terverifikasi' },
+  en: { 'tab.zakat':'💰 Zakat', 'tab.bmt':'🪙 BMT', 'tab.audit':'📊 Audit', 'tab.lembaga':'🏛️ Institution', 'btn.setor':'PAY ZAKAT NOW', 'btn.setor_sub':'Pay to verified amil institution' }
+};
+let currentLang = 'id';
+
+function t(key) { return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || (TRANSLATIONS.id[key]) || key; }
+
+function applyLanguage(lang) {
+  currentLang = lang || 'id';
+  const ids = { 'btn-tab-zakat':'tab.zakat', 'btn-tab-bmt':'tab.bmt', 'btn-tab-laporan':'tab.audit', 'btn-tab-daftar':'tab.lembaga' };
+  for (const [id, key] of Object.entries(ids)) {
+    const el = document.getElementById(id);
+    if (el) {
+      const icon = el.querySelector('span:first-child');
+      if (icon) {
+        // pertahankan ikon, ganti teks
+        const label = t(key).split(' ').slice(1).join(' ');
+        const lastSpan = el.querySelector('span:last-child');
+        if (lastSpan) lastSpan.textContent = label;
+      } else {
+        el.textContent = t(key);
+      }
+    }
+  }
+  const toggleBtn = document.getElementById('btn-toggle-lang');
+  if (toggleBtn) toggleBtn.textContent = currentLang === 'id' ? '🇮🇩 ID' : '🇬🇧 EN';
+}
+
+async function toggleLanguage() {
+  const newLang = currentLang === 'id' ? 'en' : 'id';
+  applyLanguage(newLang);
+  try {
+    await fetch('/api/config/bahasa', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: userId, bahasa: newLang })
+    });
+  } catch(e) { console.log('Gagal simpan bahasa:', e); }
+}
+
+async function loadLanguage() {
+  try {
+    const r = await fetch('/api/config/bahasa/' + userId);
+    const d = await r.json();
+    if (d.status === 'success' && d.bahasa) applyLanguage(d.bahasa);
+  } catch(e) { console.log('Gagal load bahasa:', e); }
+}
+
+async function downloadPDF() {
+  if (!userId || userId === 99999) { alert('⚠️ Download PDF hanya tersedia di Telegram (user_id valid).'); return; }
+  try {
+    const r = await fetch('/api/export/pdf/' + userId);
+    if (!r.ok) { const d = await r.json(); alert('⚠️ ' + (d.message || 'Gagal download PDF')); return; }
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Laporan_Zakat_' + userId + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function cekOnboarding() {
+  try {
+    const r = await fetch('/api/onboarding/' + userId);
+    const d = await r.json();
+    if (d.status === 'success' && !d.onboarding_selesai) {
+      const el = document.getElementById('onboarding-overlay');
+      if (el) el.style.display = 'flex';
+    }
+  } catch (e) { console.log('Onboarding error:', e); }
+}
+
+function onboardingNext(step) {
+  document.querySelectorAll('[id^="onboarding-step-"]').forEach(el => el.style.display = 'none');
+  const el = document.getElementById('onboarding-step-' + step);
+  if (el) el.style.display = 'block';
+}
+
+async function onboardingSelesai() {
+  try {
+    await fetch('/api/onboarding/selesai', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: userId })
+    });
+  } catch (e) { console.log('Gagal simpan onboarding:', e); }
+  const el = document.getElementById('onboarding-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function onboardingSkip() { onboardingSelesai(); }
+
+async function cekSuperAdmin() {
+  try {
+    const roleCheck = await fetch('/api/check-role/' + userId);
+    const roleData = await roleCheck.json();
+    const btnAdmin = document.getElementById('btn-tab-admin');
+    const btnUsers = document.getElementById('btn-tab-users');
+    if (!roleData.is_super_admin) {
+      if (btnAdmin) btnAdmin.style.display = 'none';
+      if (btnUsers) btnUsers.style.display = 'none';
+      return false;
+    }
+    if (btnAdmin) btnAdmin.style.display = 'block';
+    if (btnUsers) btnUsers.style.display = 'block';
+    return true;
+  } catch (e) { console.log('Cek super admin error:', e); return false; }
+}
+
+// =====================================================================
+// INIT ON LOAD
+// =====================================================================
+window.addEventListener('DOMContentLoaded', () => {
+  const safe = (name, fn) => {
+    try { fn(); } catch (e) { console.error(`[INIT] ${name} gagal:`, e); }
+  };
+
+  safe('updateStickySaveBar', updateStickySaveBar);
+  safe('hitungZakatOtomatis', hitungZakatOtomatis);
+  safe('muatDataPusat', muatDataPusat);
+  safe('muatRiwayatJurnal', muatRiwayatJurnal);
+  safe('loadLanguage', loadLanguage);
+  safe('cekStatusLembaga', cekStatusLembaga);
+  safe('cekSuperAdmin', cekSuperAdmin);
+  safe('cekOnboarding', cekOnboarding);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab');
+  const validTabs = ['zakat', 'bmt', 'tagihan', 'laporan', 'daftar'];
+  if (tabParam && validTabs.includes(tabParam)) {
+    setTimeout(() => {
+      if (typeof switchMenuTab === 'function') switchMenuTab(tabParam);
+    }, 500);
+  }
+
+  const inputIds = ['f-gaji','f-hadiah','f-tani','f-mewah','f-temuan','f-bmt','f-rutin','f-sekolah','f-utang','f-sedekah'];
+  inputIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      safe('markFormDirty', markFormDirty);
+      safe('hitungZakatOtomatis', hitungZakatOtomatis);
+    });
+  });
+  ['f-pengairan', 'f-tipe-mewah'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      safe('markFormDirty', markFormDirty);
+      safe('hitungZakatOtomatis', hitungZakatOtomatis);
+    });
+  });
+});
+
+// Global error handler (dev only)
+window.onerror = function (msg, url, line, col) {
+  console.error(`[JS ERROR] ${msg} @ ${url}:${line}:${col}`);
+  return false;
+};
+
+</script>
+</body>
+</html>
+

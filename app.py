@@ -70,6 +70,7 @@ CORS(app)
 # =====================================================================
 # API JADWAL SHOLAT DARI KOORDINAT (untuk GPS HP user)
 # =====================================================================
+
 @app.route('/api/jadwal-sholat')
 def api_jadwal_sholat():
     """
@@ -154,6 +155,7 @@ def display_jam_sholat():
     # ============================================================
     # DETEKSI MODE: TV MASJID vs HP USER (DENGAN COOKIE MEMORY)
     # ============================================================
+
     # Cek apakah browser ini pernah membuka mode TV (tersimpan di cookie)
     cookie_tv = request.cookies.get('raudha_is_tv')
     
@@ -226,6 +228,7 @@ def display_jam_sholat():
     # ============================================================
     # 3. AMBIL TOTAL ZAKAT KHUSUS MASJID (JIKA TV CODE VALID)
     # ============================================================
+
     total_zakat_masjid = 0
     nama_masjid_tv = ""
 
@@ -278,6 +281,7 @@ def display_jam_sholat():
 # =====================================================================
 # MENU TV
 # =====================================================================
+
 @app.route('/streaming')
 def streaming_tv():
     """Halaman Live Streaming dengan pilihan channel"""
@@ -299,6 +303,7 @@ def streaming_tv():
 # =====================================================================
 # MENU UTAMA TV & HALAMAN ZAKAT TV
 # =====================================================================
+
 @app.route('/menu')
 def menu_tv():
     # 1. Ambil tv_code dari URL
@@ -414,7 +419,7 @@ def admin_dashboard():
                 <h2 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">💰 LAZIS</h2>
                 <div class="grid grid-cols-2 gap-3">
                     <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-amber-50 text-amber-700 p-4 rounded-xl text-center font-bold text-sm">Laporan Zakat</a>
-                    <a href="#" onclick="alert('Fitur segera hadir!')" class="bg-slate-50 text-slate-500 p-4 rounded-xl text-center font-bold text-sm">Verifikasi Pembayaran</a>
+                    <a href="/mitra-alam/admin/verifikasi" class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-bold text-sm hover:bg-emerald-100 transition">🌱 Verifikasi Wakaf</a>
                 </div>
             </div>
 
@@ -464,6 +469,10 @@ def admin_dashboard():
                         } else if (role === 'lazis') {
                             document.getElementById('menu-lazis').classList.remove('hidden');
                         } else if (role === 'masjid') {
+                            document.getElementById('menu-masjid').classList.remove('hidden');
+                        } else if (role === 'admin_lembaga') {
+                            // Admin lembaga: tampilkan menu LAZIS & Masjid
+                            document.getElementById('menu-lazis').classList.remove('hidden');
                             document.getElementById('menu-masjid').classList.remove('hidden');
                         } else {
                             document.getElementById('header-role').innerText = "Akses Ditolak";
@@ -1140,14 +1149,20 @@ def require_telegram_auth(f):
         user = verify_telegram_init_data(init_data)
         
         if not user:
-            # Fallback untuk development (browser desktop)
+            # Fallback 1: dari query string
             fallback_user_id = request.args.get('user_id')
+            
+            # Fallback 2: dari body JSON
             if not fallback_user_id:
                 try:
                     body = request.get_json(silent=True) or {}
                     fallback_user_id = body.get('user_id')
                 except Exception:
                     pass
+            
+            # ✨ Fallback 3: dari path parameter (misal /api/laporan/<user_id>)
+            if not fallback_user_id and 'user_id' in kwargs:
+                fallback_user_id = kwargs.get('user_id')
             
             if fallback_user_id:
                 try:
@@ -1200,13 +1215,26 @@ def buat_kode_verifikasi(nama_lembaga, lembaga_id):
     return f"{prefix}-{lembaga_id:03d}"
 
 # =====================================================================
-# INIT DATABASE
+# INIT DATABASE (GABUNGAN — Semua Tabel dalam Satu Fungsi)
 # =====================================================================
+
 def init_web_db():
+    """
+    Inisialisasi SEMUA tabel database Raudha dalam satu fungsi:
+    - Tabel inti: jurnal_syariah, users_config, lembaga_amil, rekening_lembaga,
+      rencana_pembayaran, verifikasi_lembaga, tagihan, log_akses_sensitif
+    - Tabel TV: tv_masjid_config, agenda_masjid
+    - Tabel Mitra Alam: komoditas_wakaf, pohon_wakaf, pohon_log, pohon_panen
+    - Seed data: Super Admin, Lembaga default, Komoditas wakaf
+    """
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    # 1. jurnal_syariah
+    # =================================================================
+    # A. TABEL INTI
+    # =================================================================
+
+    # A.1. jurnal_syariah
     c.execute("""CREATE TABLE IF NOT EXISTS jurnal_syariah (
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, jenis TEXT,
         gaji REAL DEFAULT 0, honor REAL DEFAULT 0, hadiah REAL DEFAULT 0,
@@ -1230,7 +1258,7 @@ def init_web_db():
         if col not in cols:
             c.execute(f"ALTER TABLE jurnal_syariah ADD COLUMN {col} {defn}")
 
-    # 2. users_config
+    # A.2. users_config
     c.execute("""CREATE TABLE IF NOT EXISTS users_config (
         user_id INTEGER PRIMARY KEY,
         tanggal_mulai_haul TEXT,
@@ -1254,7 +1282,7 @@ def init_web_db():
         if col not in cols_uc:
             c.execute(f"ALTER TABLE users_config ADD COLUMN {col} {defn}")
 
-    # 3. lembaga_amil
+    # A.3. lembaga_amil
     c.execute("""CREATE TABLE IF NOT EXISTS lembaga_amil (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama TEXT NOT NULL,
@@ -1288,7 +1316,7 @@ def init_web_db():
         if col not in cols_lem:
             c.execute(f"ALTER TABLE lembaga_amil ADD COLUMN {col} {defn}")
 
-    # 4. rekening_lembaga
+    # A.4. rekening_lembaga
     c.execute("""CREATE TABLE IF NOT EXISTS rekening_lembaga (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lembaga_id INTEGER NOT NULL,
@@ -1302,7 +1330,7 @@ def init_web_db():
         FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
     )""")
 
-    # 5. rencana_pembayaran
+    # A.5. rencana_pembayaran
     c.execute("""CREATE TABLE IF NOT EXISTS rencana_pembayaran (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -1331,7 +1359,7 @@ def init_web_db():
         FOREIGN KEY (rekening_id) REFERENCES rekening_lembaga(id)
     )""")
 
-    # 6. verifikasi_lembaga
+    # A.6. verifikasi_lembaga
     c.execute("""CREATE TABLE IF NOT EXISTS verifikasi_lembaga (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lembaga_id INTEGER NOT NULL,
@@ -1344,7 +1372,7 @@ def init_web_db():
         FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
     )""")
 
-    # ============ 6.5 Tabel tagihan ============
+    # A.7. tagihan
     c.execute("""CREATE TABLE IF NOT EXISTS tagihan (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -1364,8 +1392,7 @@ def init_web_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_tagihan_user ON tagihan(user_id, status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tagihan_tempo ON tagihan(jatuh_tempo, status)")
 
-
-    # 7. log_akses_sensitif
+    # A.8. log_akses_sensitif
     c.execute("""CREATE TABLE IF NOT EXISTS log_akses_sensitif (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -1379,7 +1406,115 @@ def init_web_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
 
-    # 8. Seed Super Admin
+    # =================================================================
+    # B. TABEL TV & AGENDA MASJID
+    # =================================================================
+
+    # B.1. tv_masjid_config
+    c.execute("""CREATE TABLE IF NOT EXISTS tv_masjid_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lembaga_id INTEGER UNIQUE,
+        tv_code TEXT UNIQUE,
+        latitude REAL,
+        longitude REAL,
+        kota TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP,
+        FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
+    )""")
+
+    # B.2. agenda_masjid
+    c.execute("""CREATE TABLE IF NOT EXISTS agenda_masjid (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lembaga_id INTEGER NOT NULL,
+        tipe TEXT CHECK(tipe IN ('kegiatan', 'hari_besar')),
+        tanggal TEXT NOT NULL,
+        nama TEXT NOT NULL,
+        pemateri TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
+    )""")
+
+    # =================================================================
+    # C. TABEL MITRA ALAM (WAKAF PRODUKTIF TANAMAN)
+    # =================================================================
+
+    # C.1. komoditas_wakaf
+    c.execute("""CREATE TABLE IF NOT EXISTS komoditas_wakaf (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kode TEXT UNIQUE NOT NULL,
+        nama_display TEXT NOT NULL,
+        harga_pohon REAL NOT NULL,
+        output TEXT,
+        siklus_panen TEXT,
+        nilai_ekonomi TEXT,
+        fungsi_ekologis TEXT,
+        deskripsi TEXT,
+        foto_url TEXT,
+        aktif INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    # C.2. pohon_wakaf
+    c.execute("""CREATE TABLE IF NOT EXISTS pohon_wakaf (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nfc_uid TEXT UNIQUE NOT NULL,
+        komoditas_id INTEGER NOT NULL,
+        varietas TEXT,
+        tanggal_tanam DATE,
+        lat REAL,
+        lng REAL,
+        lembaga_id INTEGER NOT NULL,
+        muwakif_id INTEGER,
+        rencana_id INTEGER,
+        harga_pohon REAL,
+        status TEXT DEFAULT 'aktif',
+        catatan TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP,
+        FOREIGN KEY (komoditas_id) REFERENCES komoditas_wakaf(id),
+        FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pohon_muwakif ON pohon_wakaf(muwakif_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pohon_lembaga ON pohon_wakaf(lembaga_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pohon_status ON pohon_wakaf(status)")
+
+    # C.3. pohon_log
+    c.execute("""CREATE TABLE IF NOT EXISTS pohon_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pohon_id INTEGER NOT NULL,
+        tanggal DATE NOT NULL,
+        tipe TEXT NOT NULL,
+        nilai TEXT,
+        foto_url TEXT,
+        catatan TEXT,
+        petugas_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pohon_id) REFERENCES pohon_wakaf(id)
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_log_pohon ON pohon_log(pohon_id, tanggal)")
+
+    # C.4. pohon_panen
+    c.execute("""CREATE TABLE IF NOT EXISTS pohon_panen (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pohon_id INTEGER NOT NULL,
+        tanggal_panen DATE NOT NULL,
+        hasil_kg REAL DEFAULT 0,
+        hasil_nominal REAL DEFAULT 0,
+        pembagian_masjid REAL DEFAULT 0,
+        pembagian_perawatan REAL DEFAULT 0,
+        pembagian_raudha REAL DEFAULT 0,
+        catatan TEXT,
+        petugas_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pohon_id) REFERENCES pohon_wakaf(id)
+    )""")
+
+    # =================================================================
+    # D. SEED DATA
+    # =================================================================
+
+    # D.1. Seed Super Admin
     admin_id_env = os.getenv("ADMIN_ID", "").strip()
     if admin_id_env.isdigit():
         super_admin_id = int(admin_id_env)
@@ -1395,7 +1530,7 @@ def init_web_db():
                       (super_admin_id, date.today().strftime("%Y-%m-%d"), BASELINE_AWAL))
         logger.info(f"👑 Super Admin terdaftar: user_id={super_admin_id}")
 
-    # 9. Seed Lembaga Default
+    # D.2. Seed Lembaga Default
     c.execute("SELECT COUNT(*) FROM lembaga_amil")
     if c.fetchone()[0] == 0:
         c.execute("""INSERT INTO lembaga_amil 
@@ -1410,33 +1545,66 @@ def init_web_db():
                       'verified', 'DD-001', 0, 1, 1)""")
         logger.info("✅ Seed lembaga_amil default berhasil")
 
-        # 10. Tabel konfigurasi TV Masjid
-    c.execute("""CREATE TABLE IF NOT EXISTS tv_masjid_config (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lembaga_id INTEGER UNIQUE,
-        tv_code TEXT UNIQUE,
-        latitude REAL,
-        longitude REAL,
-        kota TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP,
-        FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
-    )""")    
+    # D.3. Seed Komoditas Wakaf Mitra Alam
+    c.execute("SELECT COUNT(*) FROM komoditas_wakaf")
+    if c.fetchone()[0] == 0:
+        seed_komoditas = [
+            ('kurma_hibrida', 'Kurma Hibrida', 250000,
+             'Buah + pohon', '3-5 tahun',
+             'Rp 300-500 rb/pohon/tahun', 'Peneduh, pangan',
+             'Kurma hibrida unggul yang mampu berbuah di iklim tropis. '
+             'Buah bernilai ekonomi tinggi, pohon dapat dijual sebagai bibit.'),
+            ('kopi_wulung', 'Kopi Wulung (Langka)', 150000,
+             'Biji kopi premium', '2-3 tahun',
+             'Rp 200-400 rb/pohon/tahun', 'Konservasi, agroforestri',
+             'Varietas kopi langka dengan cita rasa khas. Cocok untuk '
+             'agroforestri dan konservasi tanah.'),
+            ('kayu_jati', 'Kayu Jati', 500000,
+             'Kayu (siklus 15 tahun)', '15 tahun',
+             'Rp 5-15 jt/pohon', 'Penahan erosi, penyerap CO₂',
+             'Kayu jati berkualitas tinggi untuk mebel dan konstruksi. '
+             'Investasi jangka panjang yang bernilai tinggi.'),
+            ('kayu_balsa', 'Kayu Balsa', 200000,
+             'Kayu (siklus 5 tahun)', '5 tahun',
+             'Rp 1-2 jt/pohon', 'Cepat panen, bahan industri',
+             'Kayu balsa tumbuh cepat, ringan, dan kuat. Banyak dipakai '
+             'untuk industri model, panel, dan isolasi.'),
+            ('aren', 'Aren (Pohon Serbaguna)', 300000,
+             'Buah + nira/gula', '5-7 tahun',
+             'Rp 500 rb-1 jt/pohon/tahun', 'Penahan longsor, konservasi air',
+             'Pohon aren berfungsi ganda: akar kuat menahan longsor, '
+             'nira menghasilkan gula aren, buah dapat diolah.'),
+        ]
+        c.executemany("""INSERT INTO komoditas_wakaf
+                         (kode, nama_display, harga_pohon, output,
+                          siklus_panen, nilai_ekonomi, fungsi_ekologis, deskripsi)
+                         VALUES (?,?,?,?,?,?,?,?)""", seed_komoditas)
+        logger.info("✅ Seed 5 komoditas wakaf berhasil")
 
-    # 11. Tabel Agenda & Hari Besar Masjid
-    c.execute("""CREATE TABLE IF NOT EXISTS agenda_masjid (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lembaga_id INTEGER NOT NULL,
-        tipe TEXT CHECK(tipe IN ('kegiatan', 'hari_besar')),
-        tanggal TEXT NOT NULL,
-        nama TEXT NOT NULL,
-        pemateri TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (lembaga_id) REFERENCES lembaga_amil(id)
+    # =================================================================
+    # D.4. PROGRAM CONFIG (mode verifikasi wakaf, dll)
+    # =================================================================
+   
+    c.execute("""CREATE TABLE IF NOT EXISTS program_config (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
+    c.execute("""INSERT OR IGNORE INTO program_config (key, value) 
+                 VALUES ('wakaf_verification_mode', 'super_only')""")
+    c.execute("SELECT value FROM program_config WHERE key='wakaf_verification_mode'")
+    row_mode = c.fetchone()
+    current_mode = row_mode[0] if row_mode else 'super_only'
+    logger.info(f"⚙️ Program config: wakaf_verification_mode={current_mode}")
+
+    # =================================================================
+    # COMMIT & CLOSE
+    # =================================================================
 
     conn.commit()
     conn.close()
+    logger.info("✅ Semua tabel database Raudha siap (termasuk Mitra Alam)")
+
 
 init_web_db()
 
@@ -1590,6 +1758,7 @@ def laporan_tahunan(user_id, harga_emas):
 
     return {
         "total_harta": harta_kumulatif,
+        "total_penghasilan": harta_kumulatif,  # <--- TAMBAHKAN INI (atau gunakan variabel yang sesuai)
         "total_zakat": zakat_maal_wajib + total_zakat_tani,
         "zakat_maal_wajib": zakat_maal_wajib,
         "zakat_maal_potensial": zakat_maal_potensial,
@@ -1619,38 +1788,81 @@ def laporan_tahunan(user_id, harga_emas):
 
 @app.route('/api/role/<int:user_id>')
 def get_role(user_id):
-    """Endpoint untuk mengecek role admin dari Mini App."""
-    import sqlite3
-    from dotenv import load_dotenv
+    """
+    Endpoint untuk mengecek role admin dari Mini App.
+    Prioritas: super_admin (env) > users_config > admin_penugasan
+    """
     import os
-    
-    # Cek Super Admin dari .env
+    from dotenv import load_dotenv
     load_dotenv()
+    
+    # 1. Super Admin dari env
     admin_id = os.getenv("ADMIN_ID")
-    if admin_id and int(admin_id) == user_id:
+    if admin_id and admin_id.isdigit() and int(admin_id) == user_id:
         return jsonify({"status": "success", "role": "super_admin"})
     
-    # Cek Admin Penugasan dari database
+    # 2. Cek users_config (PRIORITAS)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1", (user_id,))
+    c.execute("SELECT role, status, lembaga_id FROM users_config WHERE user_id=?", (user_id,))
     row = c.fetchone()
-    conn.close()
     
     if row:
-        return jsonify({"status": "success", "role": row[0]})
+        role_db, status, lembaga_id = row
+        if status == 'active' and role_db in ('super_admin', 'admin_lembaga'):
+            conn.close()
+            return jsonify({
+                "status": "success",
+                "role": role_db,
+                "lembaga_id": lembaga_id,
+            })
+    
+    # 3. Fallback: admin_penugasan
+    c.execute("SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1", (user_id,))
+    row2 = c.fetchone()
+    conn.close()
+    
+    if row2:
+        return jsonify({"status": "success", "role": row2[0]})
     
     return jsonify({"status": "error", "message": "Not an admin"}), 403
 
 @app.route('/api/laporan/<int:user_id>')
 @require_telegram_auth
 def api_laporan(user_id):
-    # Verifikasi: user bisa akses laporan sendiri, super admin bisa akses semua
+    # Ambil user_id peminta (dari Telegram auth atau query string fallback)
     req_uid = request.telegram_user_id
+    if not req_uid:
+        try:
+            req_uid = int(request.args.get('user_id', 0)) or None
+        except (ValueError, TypeError):
+            pass
+    
     if req_uid and req_uid != user_id:
         info = get_user_role(req_uid)
-        if info.get("role") != "super_admin":
+        
+        if info.get("role") == "super_admin":
+            pass  # OK
+        
+        elif info.get("role") == "admin_lembaga":
+            lembaga_id = info.get("lembaga_id")
+            if not lembaga_id:
+                return jsonify({"status": "error", 
+                                "message": "Admin lembaga tanpa lembaga_id"}), 403
+            
+            conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+            c.execute("""SELECT 1 FROM rencana_pembayaran 
+                         WHERE user_id=? AND lembaga_id=? AND status='diverifikasi'
+                         LIMIT 1""", (user_id, lembaga_id))
+            has_transaction = c.fetchone()
+            conn.close()
+            
+            if not has_transaction:
+                return jsonify({"status": "error", 
+                                "message": "Akses ditolak. User tidak punya transaksi di lembaga Anda."}), 403
+        else:
             return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+    
     res = laporan_tahunan(user_id, HARGA_EMAS_BASE)
     res["zakat_penghasilan_wajib"] = res["total_zakat"] > 0
     return jsonify({"status": "success", "laporan": res})
@@ -1925,6 +2137,58 @@ def api_jurnal_list(user_id):
             "pengeluaran_utang","pengeluaran_sedekah",
             "edit_count","updated_at"]
     return jsonify({"status": "success", "jurnal": [dict(zip(keys, r)) for r in rows]})
+
+
+@app.route('/api/input/syariah/<int:jurnal_id>', methods=['DELETE'])
+def hapus_jurnal(jurnal_id):
+    """Soft-delete jurnal (is_active=0) — data tetap tersimpan untuk audit."""
+    user_id = int(request.args.get('user_id', 0))
+    if not user_id:
+        return jsonify({"status": "error", "message": "user_id wajib"}), 400
+
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    try:
+        c.execute("SELECT user_id FROM jurnal_syariah WHERE id=? AND COALESCE(is_active,1)=1", (jurnal_id,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({"status": "error", "message": "Jurnal tidak ditemukan"}), 404
+        if row[0] != user_id:
+            return jsonify({"status": "error", "message": "Bukan milik Anda"}), 403
+
+        c.execute("UPDATE jurnal_syariah SET is_active=0, updated_at=? WHERE id=?",
+                  (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), jurnal_id))
+        tulis_audit(c, user_id, "jurnal_syariah", jurnal_id, "DELETE",
+                    alasan="Hapus dari Mini App (soft delete)")
+        conn.commit()
+        return jsonify({"status": "success", "message": "Data dihapus"})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Hapus jurnal error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/jurnal/<int:user_id>/<int:jurnal_id>', methods=['GET'])
+def api_jurnal_single(user_id, jurnal_id):
+    """Ambil satu jurnal untuk edit."""
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT id, tgl, gaji, honor, hadiah, pertanian_kg, jenis_pengairan,
+                        benda_mewah, temuan_laut_karun, simpanan_bmt_idr,
+                        pengeluaran_rutin, pengeluaran_sekolah,
+                        pengeluaran_utang, pengeluaran_sedekah
+                 FROM jurnal_syariah
+                 WHERE id=? AND user_id=? AND COALESCE(is_active,1)=1""",
+              (jurnal_id, user_id))
+    row = c.fetchone(); conn.close()
+    if not row:
+        return jsonify({"status": "error", "message": "Jurnal tidak ditemukan"}), 404
+    keys = ["id","tgl","gaji","honor","hadiah","pertanian_kg","jenis_pengairan",
+            "benda_mewah","temuan_laut_karun","simpanan_bmt_idr",
+            "pengeluaran_rutin","pengeluaran_sekolah",
+            "pengeluaran_utang","pengeluaran_sedekah"]
+    return jsonify({"status": "success", "jurnal": dict(zip(keys, row))})       
+
 
 # =====================================================================
 # API — SUPER ADMIN
@@ -2673,6 +2937,679 @@ def api_input_arsitektur():
         conn.close()
 
 # =====================================================================
+# ROUTE MITRA ALAM — WAKAF PRODUKTIF TANAMAN
+# =====================================================================
+
+@app.route('/mitra-alam/katalog')
+def mitra_alam_katalog():
+    """
+    Halaman katalog komoditas wakaf pohon.
+    Menampilkan 5 komoditas dari database dengan harga dinamis.
+    """
+    from modul_mitra_alam import get_semua_komoditas
+    komoditas = get_semua_komoditas()
+    
+    # Ambil statistik global untuk hero section
+    from modul_mitra_alam import statistik_mitra_alam
+    try:
+        stats = statistik_mitra_alam()
+    except Exception as e:
+        logger.warning(f"Gagal load stats: {e}")
+        stats = {"total_pohon": 0, "total_muwakif": 0, 
+                 "total_lahan": 0, "total_panen_nominal": 0, 
+                 "total_bagi_masjid": 0}
+    
+    # Ambil daftar masjid/pesantren yang punya lahan (untuk filter nanti)
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT id, nama, alamat FROM lembaga_amil 
+                 WHERE status='verified' AND aktif=1
+                 ORDER BY nama ASC""")
+    lembaga_rows = c.fetchall()
+    conn.close()
+    
+    return render_template(
+        'mitra_alam/katalog.html',
+        komoditas=komoditas,
+        stats=stats,
+        lembaga_list=lembaga_rows,
+    )
+
+
+@app.route('/mitra-alam')
+def mitra_alam_home():
+    """Redirect ke katalog (untuk akses langsung /mitra-alam)."""
+    from flask import redirect
+    return redirect('/mitra-alam/katalog')      
+
+@app.route('/mitra-alam/wakaf')
+def mitra_alam_wakaf_form():
+    """Form wakaf pohon — pilih jumlah, lokasi, doa."""
+    komoditas_id = request.args.get('komoditas', type=int)
+    if not komoditas_id:
+        from flask import redirect
+        return redirect('/mitra-alam/katalog')
+    
+    from modul_mitra_alam import get_komoditas_by_id
+    kom = get_komoditas_by_id(komoditas_id)
+    if not kom:
+        return "❌ Komoditas tidak ditemukan.", 404
+    
+    # Ambil daftar lembaga/lahan
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT id, nama, alamat FROM lembaga_amil 
+                 WHERE status='verified' AND aktif=1
+                 ORDER BY nama ASC""")
+    lembaga_list = c.fetchall()
+    conn.close()
+    
+    return render_template(
+        'mitra_alam/wakaf.html',
+        kom=kom,
+        lembaga_list=lembaga_list,
+    ) 
+
+@app.route('/api/mitra-alam/wakaf/submit', methods=['POST'])
+def mitra_alam_wakaf_submit():
+    """Simpan pengajuan wakaf pohon → buat rencana_pembayaran."""
+    data = request.json or {}
+    user_id = int(data.get("user_id", 0))
+    komoditas_id = int(data.get("komoditas_id", 0))
+    jumlah = int(data.get("jumlah", 1))
+    lembaga_id = int(data.get("lembaga_id", 0))
+    doa = (data.get("doa") or "").strip()
+    nama_muwakif = (data.get("nama_muwakif") or "").strip()
+    
+    if not user_id or not komoditas_id or not lembaga_id:
+        return jsonify({"status": "error", "message": "Data tidak lengkap"}), 400
+    if jumlah < 1 or jumlah > 100:
+        return jsonify({"status": "error", "message": "Jumlah harus 1-100 pohon"}), 400
+    
+    from modul_mitra_alam import get_komoditas_by_id
+    kom = get_komoditas_by_id(komoditas_id)
+    if not kom:
+        return jsonify({"status": "error", "message": "Komoditas tidak ditemukan"}), 404
+    
+    total = kom["harga_pohon"] * jumlah
+    
+    # Cek lembaga valid
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT nama FROM lembaga_amil WHERE id=? AND status='verified'", (lembaga_id,))
+    lem_row = c.fetchone()
+    if not lem_row:
+        conn.close()
+        return jsonify({"status": "error", "message": "Lembaga tidak valid"}), 400
+    nama_lembaga = lem_row[0]
+    
+    # Pastikan user ada di users_config, dan isi nama kalau kosong
+    c.execute("SELECT nama_lengkap FROM users_config WHERE user_id=?", (user_id,))
+    user_row = c.fetchone()
+    
+    if not user_row:
+        # User baru — insert dengan nama
+        c.execute("""INSERT INTO users_config 
+                     (user_id, tanggal_mulai_haul, baseline_awal, nama_lengkap)
+                     VALUES (?, ?, 100000, ?)""",
+                  (user_id, date.today().strftime("%Y-%m-%d"), 
+                   nama_muwakif or f"User #{user_id}"))
+    else:
+        # User ada — update nama kalau ada input baru & nama lama kosong/generic
+        if nama_muwakif and (not user_row[0] or user_row[0].startswith("User #")):
+            c.execute("UPDATE users_config SET nama_lengkap=? WHERE user_id=?",
+                      (nama_muwakif, user_id))
+    
+    try:
+        keterangan = f"Wakaf {jumlah} {kom['nama_display']} di {nama_lembaga}"
+        if doa:
+            keterangan += f" — Doa: {doa}"
+        
+        c.execute("""INSERT INTO rencana_pembayaran
+                     (user_id, jenis_kewajiban, keterangan, nominal,
+                      lembaga_id, status, tanggal_rencana, catatan_user, created_at)
+                     VALUES (?, 'wakaf_pohon', ?, ?, ?, 'pending', ?, ?, CURRENT_TIMESTAMP)""",
+                  (user_id, keterangan, total, lembaga_id,
+                   date.today().strftime("%Y-%m-%d"), doa))
+        rencana_id = c.lastrowid
+        
+        # Simpan detail wakaf pohon di tabel pohon_wakaf (status 'pending')
+        # nfc_uid di-generate sementara; akan diupdate saat penanaman
+        for i in range(jumlah):
+            nfc_uid_temp = f"PENDING-{rencana_id}-{i+1}-{int(time.time())}"
+            c.execute("""INSERT INTO pohon_wakaf
+                         (nfc_uid, komoditas_id, tanggal_tanam,
+                          lembaga_id, muwakif_id, rencana_id,
+                          harga_pohon, status, catatan, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, 'menunggu_tanam', ?, CURRENT_TIMESTAMP)""",
+                      (nfc_uid_temp, komoditas_id,
+                       date.today().strftime("%Y-%m-%d"),
+                       lembaga_id, user_id, rencana_id,
+                       kom["harga_pohon"], doa))
+        
+        conn.commit()
+        logger.info(f"🌱 Wakaf baru: user={user_id}, {jumlah} {kom['nama_display']}, "
+                    f"rencana_id={rencana_id}, total=Rp {int(total):,}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Wakaf berhasil diajukan",
+            "rencana_id": rencana_id,
+            "total": total,
+        })
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Gagal simpan wakaf: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/mitra-alam/pembayaran/<int:rencana_id>')
+def mitra_alam_pembayaran(rencana_id):
+    """Halaman pembayaran wakaf — instruksi transfer + upload bukti."""
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT rp.id, rp.user_id, rp.jenis_kewajiban, rp.keterangan,
+                        rp.nominal, rp.status, rp.lembaga_id, rp.bukti_transfer_url,
+                        rp.created_at, l.nama AS lembaga_nama
+                 FROM rencana_pembayaran rp
+                 LEFT JOIN lembaga_amil l ON l.id = rp.lembaga_id
+                 WHERE rp.id=?""", (rencana_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return "❌ Transaksi tidak ditemukan.", 404
+    
+    keys = ["id","user_id","jenis_kewajiban","keterangan","nominal",
+            "status","lembaga_id","bukti_transfer_url","created_at","lembaga_nama"]
+    rencana = dict(zip(keys, row))
+
+    # Tambahkan bypass param ngrok untuk URL bukti
+    if rencana.get("bukti_transfer_url"):
+        sep = "&" if "?" in rencana["bukti_transfer_url"] else "?"
+        rencana["bukti_transfer_url_ngrok"] = (
+            rencana["bukti_transfer_url"] 
+            + sep + "ngrok-skip-browser-warning=true"
+        )
+    else:
+        rencana["bukti_transfer_url_ngrok"] = None
+    
+    # Ambil detail pohon yang terkait
+    c.execute("""SELECT p.id, p.nfc_uid, k.nama_display, p.status
+                 FROM pohon_wakaf p
+                 JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                 WHERE p.rencana_id=?
+                 ORDER BY p.id ASC""", (rencana_id,))
+    pohon_rows = c.fetchall()
+    pohon_list = [{"id": r[0], "nfc_uid": r[1], "komoditas": r[2], "status": r[3]} 
+                  for r in pohon_rows]
+    
+    # Ambil rekening default lembaga
+    c.execute("""SELECT id, metode, nama_bank, nomor_rekening, atas_nama, qr_image_url
+                 FROM rekening_lembaga
+                 WHERE lembaga_id=? AND aktif=1
+                 ORDER BY is_default DESC, id ASC
+                 LIMIT 1""", (rencana["lembaga_id"],))
+    rek_row = c.fetchone()
+    if rek_row:
+        rekening = {
+            "id": rek_row[0], "metode": rek_row[1], "nama_bank": rek_row[2],
+            "nomor_rekening": rek_row[3], "atas_nama": rek_row[4], 
+            "qr_image_url": rek_row[5],
+        }
+    else:
+        rekening = None
+    
+    conn.close()
+    
+    return render_template(
+        'mitra_alam/pembayaran.html',
+        rencana=rencana,
+        pohon_list=pohon_list,
+        rekening=rekening,
+    )
+
+
+@app.route('/api/mitra-alam/pembayaran/<int:rencana_id>/upload', methods=['POST'])
+def mitra_alam_upload_bukti(rencana_id):
+    """Upload bukti transfer wakaf pohon."""
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "File tidak ditemukan"}), 400
+    
+    file = request.files['file']
+    user_id = request.form.get("user_id", "").strip()
+    
+    if not user_id.isdigit():
+        return jsonify({"status": "error", "message": "user_id wajib"}), 400
+    user_id = int(user_id)
+    
+    if not _allowed_file(file.filename):
+        return jsonify({"status": "error", 
+                        "message": "Format tidak didukung (jpg/png/pdf)"}), 400
+    
+    file.seek(0, os.SEEK_END)
+    size = file.tell(); file.seek(0)
+    if size > MAX_FILE_SIZE:
+        return jsonify({"status": "error", 
+                        "message": "File terlalu besar (maks 5 MB)"}), 400
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    try:
+        c.execute("SELECT user_id, status FROM rencana_pembayaran WHERE id=?", 
+                  (rencana_id,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({"status": "error", 
+                            "message": "Transaksi tidak ditemukan"}), 404
+        if row[0] != user_id:
+            return jsonify({"status": "error", "message": "Bukan milik Anda"}), 403
+        if row[1] != 'pending':
+            return jsonify({"status": "error", 
+                            "message": f"Status sudah {row[1]}"}), 400
+        
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"bukti_wakaf_{rencana_id}_{user_id}_{timestamp}.{ext}"
+        filepath = os.path.join(UPLOAD_DOKUMEN, filename)
+        file.save(filepath)
+        
+        url = f"/uploads/dokumen_lembaga/{filename}"
+        
+        c.execute("""UPDATE rencana_pembayaran SET
+                        status='dibayar',
+                        bukti_transfer_url=?,
+                        bukti_uploaded_at=CURRENT_TIMESTAMP,
+                        tanggal_bayar=?,
+                        updated_at=CURRENT_TIMESTAMP
+                     WHERE id=?""",
+                  (url, date.today().strftime("%Y-%m-%d"), rencana_id))
+        
+        logger.info(f"🌱 Bukti wakaf uploaded: rencana_id={rencana_id}")
+        conn.commit()
+        return jsonify({"status": "success", "message": "Bukti terupload", "url": url})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Upload error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+# =====================================================================
+# API — VERIFIKASI PEMBAYARAN WAKAF (ADMIN)
+# =====================================================================
+
+@app.route('/api/mitra-alam/pembayaran/list/<int:lembaga_id>')
+@app.route('/api/mitra-alam/pembayaran/list/all')
+def mitra_alam_pembayaran_list(lembaga_id=None):
+    """
+    Daftar pembayaran wakaf:
+    - lembaga_id = angka → filter per lembaga (admin lembaga)
+    - lembaga_id = 'all' → semua lembaga (super admin)
+    """
+    user_id = int(request.args.get("user_id", 0))
+    info = get_user_role(user_id)
+    is_super = info.get("role") == "super_admin"
+    
+    # Route /all hanya untuk super admin
+    if lembaga_id is None:  # 'all'
+        if not is_super:
+            return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+        lembaga_id = None  # all
+    else:
+        # Filter lembaga_id → cek akses
+        ok, err, info2 = _cek_akses_lembaga(user_id, lembaga_id)
+        if not ok:
+            return jsonify({"status": "error", "message": err}), 403
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    
+    # Bangun query dinamis
+    if lembaga_id is None:
+        # Super admin: semua lembaga
+        c.execute("""SELECT rp.id, rp.user_id, rp.keterangan, rp.nominal,
+                            rp.status, rp.bukti_transfer_url, rp.created_at,
+                            rp.verified_at, rp.catatan_admin,
+                            uc.nama_lengkap, uc.no_whatsapp,
+                            l.nama AS lembaga_nama
+                     FROM rencana_pembayaran rp
+                     LEFT JOIN users_config uc ON uc.user_id = rp.user_id
+                     LEFT JOIN lembaga_amil l ON l.id = rp.lembaga_id
+                     WHERE rp.jenis_kewajiban = 'wakaf_pohon'
+                       AND rp.status IN ('dibayar', 'diverifikasi')
+                     ORDER BY 
+                       CASE rp.status WHEN 'dibayar' THEN 0 ELSE 1 END,
+                       rp.created_at DESC
+                     LIMIT 200""")
+    else:
+        # Admin lembaga: filter per lembaga
+        c.execute("""SELECT rp.id, rp.user_id, rp.keterangan, rp.nominal,
+                            rp.status, rp.bukti_transfer_url, rp.created_at,
+                            rp.verified_at, rp.catatan_admin,
+                            uc.nama_lengkap, uc.no_whatsapp,
+                            l.nama AS lembaga_nama
+                     FROM rencana_pembayaran rp
+                     LEFT JOIN users_config uc ON uc.user_id = rp.user_id
+                     LEFT JOIN lembaga_amil l ON l.id = rp.lembaga_id
+                     WHERE rp.lembaga_id = ?
+                       AND rp.jenis_kewajiban = 'wakaf_pohon'
+                       AND rp.status IN ('dibayar', 'diverifikasi')
+                     ORDER BY 
+                       CASE rp.status WHEN 'dibayar' THEN 0 ELSE 1 END,
+                       rp.created_at DESC
+                     LIMIT 100""", (lembaga_id,))
+    
+    rows = c.fetchall()
+    conn.close()
+    
+    keys = ["id","user_id","keterangan","nominal","status",
+            "bukti_transfer_url","created_at","verified_at","catatan_admin",
+            "nama_lengkap","no_whatsapp","lembaga_nama"]
+    pembayaran = [dict(zip(keys, r)) for r in rows]
+    
+    # Tambah URL bypass ngrok
+    for p in pembayaran:
+        if p.get("bukti_transfer_url"):
+            sep = "&" if "?" in p["bukti_transfer_url"] else "?"
+            p["bukti_url_ngrok"] = p["bukti_transfer_url"] + sep + "ngrok-skip-browser-warning=true"
+        else:
+            p["bukti_url_ngrok"] = None
+    
+    # Cek mode verifikasi global
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT value FROM program_config WHERE key='wakaf_verification_mode'")
+    row_mode = c.fetchone()
+    verification_mode = row_mode[0] if row_mode else 'super_only'
+    conn.close()
+    
+    return jsonify({
+        "status": "success",
+        "pembayaran": pembayaran,
+        "is_super_admin": is_super,
+        "lembaga_id": lembaga_id,
+        "verification_mode": verification_mode,
+    })
+
+@app.route('/api/mitra-alam/pembayaran/<int:rencana_id>/verifikasi', methods=['POST'])
+def mitra_alam_verifikasi_pembayaran(rencana_id):
+    """Verifikasi pembayaran wakaf — update status & aktifkan pohon."""
+    data = request.json or {}
+    user_id = int(data.get("user_id", 0))
+    catatan = (data.get("catatan_admin") or "").strip()
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "user_id wajib"}), 400
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    try:
+        # Cek transaksi ada & statusnya 'dibayar'
+        c.execute("""SELECT user_id, lembaga_id, status, nominal 
+                     FROM rencana_pembayaran 
+                     WHERE id=? AND jenis_kewajiban='wakaf_pohon'""", (rencana_id,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({"status": "error", "message": "Transaksi tidak ditemukan"}), 404
+        
+        pembuat_id, lembaga_id, status, nominal = row
+        
+                # === CEK AKSES (mode-aware) ===
+        info = get_user_role(user_id)
+        is_super = info.get("role") == "super_admin"
+        
+        # Cek mode verifikasi global
+        c.execute("SELECT value FROM program_config WHERE key='wakaf_verification_mode'")
+        row_mode = c.fetchone()
+        verification_mode = row_mode[0] if row_mode else 'super_only'
+        
+        # MODE super_only: hanya Super Admin yang bisa verifikasi
+        if verification_mode == 'super_only' and not is_super:
+            return jsonify({
+                "status": "error",
+                "message": "Verifikasi saat ini hanya oleh Super Admin.\n\n"
+                           "Admin lembaga akan diaktifkan setelah onboarding selesai."
+            }), 403
+        
+        # MODE multi_admin: admin lembaga juga bisa verifikasi (lembaga sendiri)
+        if not is_super:
+            ok, err, info2 = _cek_akses_lembaga(user_id, lembaga_id)
+            if not ok:
+                return jsonify({"status": "error", "message": err}), 403
+        
+        # Guard self-verify: berlaku untuk non-super-admin saja
+        if not is_super and pembuat_id == user_id:
+            return jsonify({"status": "error", 
+                            "message": "Tidak bisa verifikasi pembayaran sendiri. Minta admin lain."}), 403
+        
+        # Log extra kalau super admin verifikasi sendiri
+        if is_super and pembuat_id == user_id:
+            logger.warning(f"⚠️ Super Admin {user_id} verifikasi transaksi sendiri #{rencana_id}")  
+        if status != 'dibayar':
+            return jsonify({"status": "error", 
+                            "message": f"Status saat ini: {status}. Hanya 'dibayar' yang bisa diverifikasi"}), 400
+        
+        # Update transaksi
+        c.execute("""UPDATE rencana_pembayaran SET
+                        status='diverifikasi',
+                        verified_by_admin=?,
+                        verified_at=CURRENT_TIMESTAMP,
+                        catatan_admin=?,
+                        updated_at=CURRENT_TIMESTAMP
+                     WHERE id=?""", (user_id, catatan, rencana_id))
+        
+        # Aktifkan pohon terkait (status: menunggu_tanam → aktif)
+        c.execute("""UPDATE pohon_wakaf SET
+                        status='aktif',
+                        tanggal_tanam=?,
+                        updated_at=CURRENT_TIMESTAMP
+                     WHERE rencana_id=? AND status='menunggu_tanam'""",
+                  (date.today().strftime("%Y-%m-%d"), rencana_id))
+        jumlah_pohon_aktif = c.rowcount
+        
+        log_sensitive(c, user_id, info.get("role", "admin_lembaga"),
+                      "verifikasi_wakaf", target_tabel="rencana_pembayaran",
+                      target_id=rencana_id,
+                      detail=f"lembaga={lembaga_id}, nominal={nominal}, pohon={jumlah_pohon_aktif}",
+                      request_obj=request)
+        
+        conn.commit()
+        logger.info(f"✅ Wakaf #{rencana_id} diverifikasi oleh admin {user_id}, "
+                    f"{jumlah_pohon_aktif} pohon diaktifkan")
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Pembayaran diverifikasi. {jumlah_pohon_aktif} pohon diaktifkan.",
+            "jumlah_pohon_aktif": jumlah_pohon_aktif,
+        })
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Verifikasi error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/mitra-alam/admin/verifikasi')
+def mitra_alam_admin_verifikasi():
+    """Halaman admin verifikasi pembayaran wakaf."""
+    return render_template('mitra_alam/admin_verifikasi.html')       
+
+@app.route('/api/mitra-alam/admin/lembaga-saya/<int:user_id>')
+def mitra_alam_lembaga_admin(user_id):
+    """Ambil lembaga_id yang dikelola user (untuk admin verifikasi wakaf)."""
+    info = get_user_role(user_id)
+    
+    # Super admin: lihat SEMUA transaksi (semua lembaga)
+    if info.get("role") == "super_admin":
+        return jsonify({
+            "status": "success",
+            "lembaga_id": None,           # None = semua lembaga
+            "is_super_admin": True,
+            "mode": "super_admin_all",    # mode baru
+        })
+    
+    # Admin lembaga: pakai lembaga_id dari users_config
+    lembaga_id = info.get("lembaga_id")
+    if not lembaga_id:
+        return jsonify({"status": "error", 
+                        "message": "Anda bukan admin lembaga"}), 403
+    
+    return jsonify({
+        "status": "success",
+        "lembaga_id": lembaga_id,
+        "is_super_admin": False,
+    })
+
+# =====================================================================
+# HALAMAN PUBLIK POHON (Tap NFC)
+# =====================================================================
+
+@app.route('/pohon/<nfc_uid>')
+def halaman_pohon_publik(nfc_uid):
+    """
+    Halaman publik pohon — dibuka saat NFC di-tap.
+    Menampilkan detail pohon, riwayat perawatan, muwakif, dan estimasi panen.
+    """
+    from modul_mitra_alam import get_pohon_by_uid, get_log_pohon, get_panen_pohon
+    
+    pohon = get_pohon_by_uid(nfc_uid)
+    if not pohon:
+        return render_template_string("""
+            <!DOCTYPE html>
+            <html><head><meta charset="UTF-8"><title>Pohon Tidak Ditemukan</title>
+            <script src="https://cdn.tailwindcss.com"></script></head>
+            <body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
+                <div class="max-w-md mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-rose-600 to-rose-700 text-white p-8 text-center">
+                        <div class="text-6xl mb-3">🌱</div>
+                        <h1 class="text-xl font-black">Pohon Tidak Ditemukan</h1>
+                        <p class="text-sm opacity-90 mt-1">UID: {{ uid }}</p>
+                    </div>
+                    <div class="p-6 text-center text-sm text-slate-600">
+                        <p>Pohon dengan UID ini belum terdaftar di sistem Raudha.</p>
+                        <p class="mt-2 text-xs text-slate-400">Pastikan tag NFC tertempel dengan benar atau hubungi petugas.</p>
+                    </div>
+                </div>
+            </body></html>
+        """, uid=nfc_uid), 404
+    
+    # Ambil log & panen
+    logs = get_log_pohon(pohon["id"], limit=20)
+    panen = get_panen_pohon(pohon["id"])
+    
+    # Ambil komoditas detail
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT kode, nama_display, output, siklus_panen, 
+                        nilai_ekonomi, fungsi_ekologis, deskripsi
+                 FROM komoditas_wakaf WHERE id=?""", (pohon["komoditas_id"],))
+    kom_row = c.fetchone()
+    kom = None
+    if kom_row:
+        kom = {
+            "kode": kom_row[0], "nama_display": kom_row[1],
+            "output": kom_row[2], "siklus_panen": kom_row[3],
+            "nilai_ekonomi": kom_row[4], "fungsi_ekologis": kom_row[5],
+            "deskripsi": kom_row[6],
+        }
+    
+    # Ambil info lembaga (lokasi tanam)
+    c.execute("SELECT nama, alamat FROM lembaga_amil WHERE id=?", (pohon["lembaga_id"],))
+    lem_row = c.fetchone()
+    lembaga = {"nama": lem_row[0], "alamat": lem_row[1]} if lem_row else None
+    
+    # Hitung umur pohon (hari)
+    umur_hari = None
+    if pohon.get("tanggal_tanam"):
+        try:
+            tgl_tanam = datetime.strptime(pohon["tanggal_tanam"], "%Y-%m-%d").date()
+            umur_hari = (date.today() - tgl_tanam).days
+        except (ValueError, TypeError):
+            pass
+    
+    conn.close()
+    
+    # Tambah bypass ngrok untuk foto
+    for log in logs:
+        if log.get("foto_url"):
+            sep = "&" if "?" in log["foto_url"] else "?"
+            log["foto_url_ngrok"] = log["foto_url"] + sep + "ngrok-skip-browser-warning=true"
+        else:
+            log["foto_url_ngrok"] = None
+    
+    return render_template(
+        'mitra_alam/pohon_publik.html',
+        pohon=pohon,
+        kom=kom,
+        lembaga=lembaga,
+        logs=logs,
+        panen=panen,
+        umur_hari=umur_hari,
+    )
+
+# =====================================================================
+# DASHBOARD POHON SAYA
+# =====================================================================
+
+@app.route('/mitra-alam/pohon-saya')
+def mitra_alam_pohon_saya():
+    """Dashboard 'Pohon Saya' — semua pohon yang diwakafkan user."""
+    return render_template('mitra_alam/pohon_saya.html')
+
+
+@app.route('/api/mitra-alam/pohon-saya/<int:user_id>')
+def api_mitra_alam_pohon_saya(user_id):
+    """List semua pohon milik user + statistik."""
+    from modul_mitra_alam import get_pohon_user
+    
+    pohon_list = get_pohon_user(user_id)
+    
+    # Pastikan list (bukan None)
+    if pohon_list is None:
+        pohon_list = []
+    
+    # Hitung statistik
+    total_pohon = len(pohon_list)
+    total_aktif = sum(1 for p in pohon_list if p.get("status") == "aktif")
+    total_nilai = 0
+    
+    # Ambil detail komoditas untuk hitung total nilai
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    for p in pohon_list:
+        c.execute(
+            """SELECT k.harga_pohon, k.output, k.siklus_panen 
+               FROM komoditas_wakaf k
+               JOIN pohon_wakaf w ON w.komoditas_id = k.id
+               WHERE w.id=?""",
+            (p["id"],)
+        )
+        row = c.fetchone()
+        if row:
+            total_nilai += row[0] or 0
+            p["harga_pohon"] = row[0]
+            p["output"] = row[1]
+            p["siklus_panen"] = row[2]
+    
+    # Total panen
+    c.execute(
+        """SELECT COALESCE(SUM(pp.pembagian_masjid), 0),
+                  COALESCE(SUM(pp.hasil_nominal), 0),
+                  COUNT(*)
+           FROM pohon_panen pp
+           JOIN pohon_wakaf pw ON pw.id = pp.pohon_id
+           WHERE pw.muwakif_id=?""",
+        (user_id,)
+    )
+    row_panen = c.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "status": "success",
+        "pohon": pohon_list,
+        "stats": {
+            "total_pohon": total_pohon,
+            "total_aktif": total_aktif,
+            "total_nilai": total_nilai,
+            "total_panen_nominal": row_panen[1] if row_panen else 0,
+            "total_panen_count": row_panen[2] if row_panen else 0,
+        },
+    })
+
+
+# =====================================================================
 # API — RENCANA PEMBAYARAN (Batch 5a)
 # =====================================================================
 
@@ -2692,9 +3629,12 @@ def bisa_verifikasi(user_id, rencana_id):
         
         pembuat_id, lembaga_id, verif_role, verif_lembaga, verif_status = row
         
+        # Super admin: boleh verifikasi semua (termasuk sendiri — fase awal)
         if verif_role == 'super_admin' and verif_status == 'active':
+            # ✅ Boleh self-verify (konsisten dengan wakaf, fase awal)
+            # Log untuk audit kalau self-verify
             if pembuat_id == user_id:
-                return False, "Super admin tidak bisa verifikasi pembayaran miliknya sendiri"
+                logger.warning(f"⚠️ Super Admin {user_id} verifikasi zakat sendiri #{rencana_id}")
             return True, None
         
         if verif_role == 'admin_lembaga' and verif_status == 'active':
@@ -3295,6 +4235,44 @@ def generate_hash_dokumen(nomor_dokumen, user_id, total_zakat):
 @app.route('/api/export/pdf/<int:user_id>', methods=['GET'])
 def export_pdf_laporan(user_id):
     """Generate PDF laporan zakat tahunan."""
+
+    # === AUTH CHECK ===
+    req_user_id_raw = request.args.get('user_id') or request.headers.get('X-User-Id', '')
+    
+    try:
+        req_user_id = int(req_user_id_raw) if req_user_id_raw else None
+    except (ValueError, TypeError):
+        req_user_id = None
+    
+    if req_user_id:
+        if req_user_id != user_id:
+            info = get_user_role(req_user_id)
+            
+            if info.get("role") == "super_admin":
+                pass  # OK
+            
+            elif info.get("role") == "admin_lembaga":
+                lembaga_id = info.get("lembaga_id")
+                if not lembaga_id:
+                    return jsonify({"status": "error", 
+                                    "message": "Admin lembaga tanpa lembaga_id"}), 403
+                
+                conn_auth = sqlite3.connect(DB_PATH); c_auth = conn_auth.cursor()
+                c_auth.execute("""SELECT 1 FROM rencana_pembayaran 
+                                  WHERE user_id=? AND lembaga_id=? 
+                                    AND status='diverifikasi'
+                                  LIMIT 1""", (user_id, lembaga_id))
+                has_transaction = c_auth.fetchone()
+                conn_auth.close()
+                
+                if not has_transaction:
+                    return jsonify({"status": "error", 
+                                    "message": "Akses ditolak. User tidak punya transaksi di lembaga Anda."}), 403
+            else:
+                return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+    
+    # === END AUTH CHECK === 
+
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
     
     # Ambil data user
@@ -3566,6 +4544,7 @@ def export_pdf_laporan(user_id):
         as_attachment=True,
         download_name=f"Laporan_Zakat_{nama_user.replace(' ', '_')}_{nomor_dokumen.replace('/', '-')}.pdf"
     )
+
 
 # =====================================================================
 # API — TAGIHAN (Batch 6a)
@@ -3940,6 +4919,7 @@ def index():
         "haul_hari": HAUL_HARI,
     }
     return render_template('index.html', cfg=cfg)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

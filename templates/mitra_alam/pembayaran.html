@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pembayaran Wakaf — Raudha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="antialiased text-slate-800 pb-24">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white rounded-b-3xl shadow-xl sticky top-0 z-40">
+        <div class="max-w-md mx-auto px-4 py-5">
+            <div class="flex items-center gap-3">
+                <button onclick="location.href='/mitra-alam/katalog'" 
+                        class="bg-white/20 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+                    <span class="text-lg">⬅️</span>
+                </button>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-200 uppercase tracking-widest font-bold">Pembayaran Wakaf</p>
+                    <h1 class="text-lg font-black leading-tight">Transaksi #{{ rencana.id }}</h1>
+                </div>
+                <div class="text-4xl">🤲</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS BANNER -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        {% if rencana.status == 'pending' %}
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+            <span class="text-2xl">⏳</span>
+            <div>
+                <p class="text-sm font-black text-amber-900">Menunggu Pembayaran</p>
+                <p class="text-[11px] text-amber-800 mt-1">Transfer sesuai nominal, lalu upload bukti di bawah.</p>
+            </div>
+        </div>
+        {% elif rencana.status == 'dibayar' %}
+        <div class="bg-blue-50 border border-blue-300 rounded-2xl p-4 flex items-start gap-3">
+            <span class="text-2xl">📤</span>
+            <div>
+                <p class="text-sm font-black text-blue-900">Bukti Terupload</p>
+                <p class="text-[11px] text-blue-800 mt-1">Admin akan memverifikasi pembayaran Anda.</p>
+            </div>
+        </div>
+        {% elif rencana.status == 'diverifikasi' %}
+        <div class="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex items-start gap-3">
+            <span class="text-2xl">✅</span>
+            <div>
+                <p class="text-sm font-black text-emerald-900">Pembayaran Terverifikasi</p>
+                <p class="text-[11px] text-emerald-800 mt-1">Wakaf Anda sudah sah. Sertifikat akan diterbitkan.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- DETAIL TRANSAKSI -->
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-3">📋 Detail Transaksi</h3>
+            
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between border-b border-slate-100 pb-2">
+                    <span class="text-slate-500">Keterangan</span>
+                    <span class="font-bold text-right text-xs max-w-[60%]">{{ rencana.keterangan }}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-100 pb-2">
+                    <span class="text-slate-500">Lembaga</span>
+                    <span class="font-bold text-right text-xs">{{ rencana.lembaga_nama or '-' }}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-100 pb-2">
+                    <span class="text-slate-500">Tanggal</span>
+                    <span class="font-bold text-xs">{{ rencana.created_at[:10] if rencana.created_at else '-' }}</span>
+                </div>
+                {% if pohon_list %}
+                <div class="flex justify-between border-b border-slate-100 pb-2">
+                    <span class="text-slate-500">Jumlah Pohon</span>
+                    <span class="font-bold text-xs">{{ pohon_list|length }} pohon</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between pt-2">
+                    <span class="text-slate-700 font-bold">TOTAL</span>
+                    <span class="font-black text-emerald-700 text-lg">Rp {{ "{:,.0f}".format(rencana.nominal).replace(",", ".") }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSTRUKSI TRANSFER -->
+    {% if rencana.status == 'pending' and rekening %}
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-3">💳 Instruksi Transfer</h3>
+            
+            <div class="bg-emerald-50 rounded-xl p-4 mb-3">
+                <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Transfer ke</p>
+                <p class="text-lg font-black text-emerald-800">{{ rekening.nama_bank }}</p>
+                <p class="text-2xl font-black text-slate-900 tracking-wider my-2 font-mono">{{ rekening.nomor_rekening }}</p>
+                <p class="text-xs text-slate-600">a.n. <b>{{ rekening.atas_nama }}</b></p>
+            </div>
+            
+            <div class="flex items-center justify-between bg-amber-50 rounded-xl p-3">
+                <div>
+                    <p class="text-[10px] text-amber-700 uppercase font-bold">Nominal</p>
+                    <p class="text-lg font-black text-amber-900">Rp {{ "{:,.0f}".format(rencana.nominal).replace(",", ".") }}</p>
+                </div>
+                <button onclick="copyNominal()" 
+                        class="bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-amber-700">
+                    📋 Salin
+                </button>
+            </div>
+            
+            <p class="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                💡 Mohon transfer <b>tepat sesuai nominal</b> agar mudah diverifikasi. 
+                Setelah transfer, upload bukti di bawah.
+            </p>
+        </div>
+    </div>
+    {% elif rencana.status == 'pending' and not rekening %}
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-red-50 border border-red-300 rounded-2xl p-4">
+            <p class="text-sm font-bold text-red-900">⚠️ Rekening Belum Tersedia</p>
+            <p class="text-xs text-red-700 mt-1">Admin lembaga belum mendaftarkan rekening. Hubungi admin.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- UPLOAD BUKTI -->
+    {% if rencana.status == 'pending' %}
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-3">📤 Upload Bukti Transfer</h3>
+            
+            <input type="file" id="file_bukti" accept="image/*,.pdf"
+                   class="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+            
+            <p class="text-[10px] text-slate-400 mt-2">Format: JPG, PNG, atau PDF (maks 5 MB)</p>
+            
+            <button onclick="uploadBukti()" id="btn_upload"
+                    class="w-full mt-3 bg-emerald-600 text-white font-black py-3 rounded-xl text-sm hover:bg-emerald-700 transition disabled:opacity-50">
+                📤 Upload Bukti
+            </button>
+        </div>
+    </div>
+    {% elif rencana.status == 'dibayar' and rencana.bukti_transfer_url %}
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-3">📎 Bukti Terupload</h3>
+            
+            {# Tampilkan thumbnail kalau file gambar #}
+            {% set url_lower = rencana.bukti_transfer_url.lower() %}
+            {% if url_lower.endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif')) %}
+            <div class="mb-3 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                <img src="{{ rencana.bukti_transfer_url_ngrok or rencana.bukti_transfer_url }}" 
+                     alt="Bukti Transfer"
+                     class="w-full h-auto max-h-64 object-contain"
+                     onerror="this.style.display='none'">
+            </div>
+            {% endif %}
+            
+            <a href="{{ rencana.bukti_transfer_url_ngrok or rencana.bukti_transfer_url }}" 
+               target="_blank"
+               class="block bg-emerald-50 rounded-xl p-3 text-center text-sm font-bold text-emerald-700 hover:bg-emerald-100 transition">
+                🔍 Buka File Bukti
+            </a>
+            
+            <p class="text-[10px] text-slate-400 mt-2 text-center">
+                Kalau muncul halaman "Visit Site" dari ngrok, klik itu untuk melanjutkan.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- DAFTAR POHON -->
+    {% if pohon_list %}
+    <div class="max-w-md mx-auto px-4 mt-4 mb-6">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-3">🌳 Pohon Yang Akan Ditanam</h3>
+            <div class="space-y-2">
+                {% for p in pohon_list %}
+                <div class="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
+                    <span class="text-lg">🌱</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-slate-800">{{ p.komoditas }}</p>
+                        <p class="text-[10px] text-slate-400 font-mono truncate">{{ p.nfc_uid }}</p>
+                    </div>
+                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full 
+                        {% if p.status == 'menunggu_tanam' %}bg-amber-100 text-amber-800
+                        {% elif p.status == 'aktif' %}bg-emerald-100 text-emerald-800
+                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                        {{ p.status.replace('_', ' ').title() }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const RENCANA_ID = {{ rencana.id }};
+        const NOMINAL = {{ rencana.nominal }};
+        const USER_ID = tg?.initDataUnsafe?.user?.id;
+
+        function copyNominal() {
+            const text = String(Math.round(NOMINAL));
+            navigator.clipboard.writeText(text).then(() => {
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                alert(`✅ Nominal disalin: Rp ${NOMINAL.toLocaleString('id-ID')}`);
+            }).catch(() => {
+                alert('❌ Gagal menyalin. Salin manual: ' + text);
+            });
+        }
+
+        async function uploadBukti() {
+            const input = document.getElementById('file_bukti');
+            const btn = document.getElementById('btn_upload');
+            
+            if (!input.files || !input.files[0]) {
+                alert('⚠️ Pilih file bukti transfer terlebih dahulu.');
+                return;
+            }
+            if (!USER_ID) {
+                alert('⚠️ Buka dari Telegram Mini App.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Mengupload...';
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            formData.append('user_id', USER_ID);
+            
+            try {
+                const res = await fetch(`/api/mitra-alam/pembayaran/${RENCANA_ID}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                    alert('✅ Bukti berhasil diupload!\n\nAdmin akan segera memverifikasi.\nAnda akan menerima notifikasi.');
+                    location.reload();
+                } else {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                    alert('❌ ' + (data.message || 'Gagal upload'));
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 Upload Bukti';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -17,9 +17,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 import socket
 import shutil
-from datetime import datetime as _dt
-from datetime import datetime
+from datetime import datetime as _dt, datetime, date
 import sqlite3
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Import dari modul_sholat (untuk fitur bot lainnya)
 from modul_sholat import (
@@ -30,16 +34,28 @@ from modul_sholat import (
 # Import dari jadwal_sholat (untuk fitur API Aladhan)
 from jadwal_sholat import cari_kota, get_jadwal, format_jadwal
 
-# Paksa IPv4 untuk koneksi keluar (antisipasi IPv6 tidak stabil)
+import socket
+
+# Paksa IPv4: saat me-resolve api.telegram.org, langsung kembalikan alamat IPv4, lewati IPv6
 _original_getaddrinfo = socket.getaddrinfo
-def _ipv4_only(host, port, family=0, type=0, proto=0, flags=0):
-    return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-socket.getaddrinfo = _ipv4_only
+
+def _force_ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    if host == 'api.telegram.org':
+        # Kembalikan alamat IPv4 Telegram secara langsung (149.154.167.220 adalah salah satu IP Bot API)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('149.154.167.220', port))]
+    return _original_getaddrinfo(host, port, family, type, proto, flags)
+
+socket.getaddrinfo = _force_ipv4_getaddrinfo
 
 # --- 1. SET UP PATH & ENV ---
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 load_dotenv(BASE_DIR / ".env")
+
+# --- FOLDER UPLOAD (sama dengan app.py) ---
+UPLOAD_FOLDER = os.path.join(str(BASE_DIR), "uploads")
+UPLOAD_DOKUMEN = os.path.join(UPLOAD_FOLDER, "dokumen_lembaga")
+os.makedirs(UPLOAD_DOKUMEN, exist_ok=True)
 
 # --- 2. LOGGING ---
 logging.basicConfig(
@@ -104,6 +120,22 @@ BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
 os.makedirs(BACKUP_DIR, exist_ok=True)
 MAX_BACKUP_DAYS = 7  # Retensi: 7 hari
 
+# =====================================================================
+# KONFIGURASI BACKUP MINGGUAN + EMAIL
+# =====================================================================
+
+BACKUP_WEEKLY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups_weekly")
+os.makedirs(BACKUP_WEEKLY_DIR, exist_ok=True)
+
+# SMTP — diisi dari .env
+SMTP_HOST = (os.getenv("SMTP_HOST") or "").strip()
+SMTP_PORT = int((os.getenv("SMTP_PORT") or "587").strip())
+SMTP_USER = (os.getenv("SMTP_USER") or "").strip()
+SMTP_PASS = (os.getenv("SMTP_PASS") or "").strip()
+SMTP_TO   = (os.getenv("SMTP_TO")   or "").strip()
+
+if not all([SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_TO]):
+    logger.warning("⚠️ SMTP belum lengkap — backup email tidak akan dikirim")
 
 # --- 6. INIT DATABASE (SEKALI SAJA) ---
 try:
@@ -222,19 +254,41 @@ def simpan_subscription(user_id, masjid_id):
     conn.close()
 
 def get_user_role(user_id):
-    """Mengembalikan role admin user (super_admin, kesehatan, lazis, masjid) atau None."""
+    """
+    Mengembalikan role user:
+    - 'super_admin' dari ADMIN_ID env
+    - 'super_admin', 'admin_lembaga' dari users_config (PRIORITAS)
+    - 'kesehatan', 'lazis', 'masjid' dari admin_penugasan (FALLBACK)
+    """
+    # 1. Cek Super Admin dari env
     if is_super_admin(user_id):
         return "super_admin"
     
+    # 2. PRIORITAS: Cek users_config (admin_lembaga & super_admin DB)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Cek apakah user ditugaskan di tabel admin_penugasan
-    c.execute("SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1", (user_id,))
+    c.execute("SELECT role, status FROM users_config WHERE user_id=?", (user_id,))
     row = c.fetchone()
     conn.close()
     
     if row:
-        return row[0]  # 'kesehatan', 'lazis', dll
+        role_db, status = row
+        if status == 'active' and role_db in ('super_admin', 'admin_lembaga'):
+            return role_db   # ← RETURN LANGSUNG (prioritas)
+    
+    # 3. FALLBACK: Cek admin_penugasan (kesehatan, lazis, masjid)
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "SELECT jenis_layanan FROM admin_penugasan WHERE user_id = ? AND status = 'aktif' LIMIT 1",
+        (user_id,)
+    )
+    row2 = c.fetchone()
+    conn.close()
+    
+    if row2:
+        return row2[0]
+    
     return None
 
 # =====================================================================
@@ -283,15 +337,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"\n\n_Anda belum memilih masjid acuan._"
     
     keyboard = [
-        [InlineKeyboardButton("🚀 Buka Aplikasi Hitung Amal & Zakat", web_app=WebAppInfo(url=url_mini_app))],
-        [InlineKeyboardButton("🌅 Raudha Pagi Sehat", callback_data="menu_pagi_sehat"),
-         InlineKeyboardButton("🤲 Doa", callback_data="menu_doa")],
+        [InlineKeyboardButton("🚀 Buka App Hitung Amal & Zakat", web_app=WebAppInfo(url=url_mini_app))],
+        [InlineKeyboardButton("🌅 Pagi Sehat", callback_data="menu_pagi_sehat"),
+         InlineKeyboardButton("🤲 Doa Pilihan", callback_data="menu_doa")],
         [InlineKeyboardButton("🕌 Masjid & Jaringan", callback_data="menu_masjid"),
-         InlineKeyboardButton("🕌 Sholat", callback_data="menu_sholat")],
-        [InlineKeyboardButton("🌱 Tanam", callback_data="menu_tanam"),
+         InlineKeyboardButton("🕌 Jam Sholat", callback_data="menu_sholat")],
+        [InlineKeyboardButton("🌱 Mitra Alam", callback_data="menu_tanam"),
          InlineKeyboardButton("🏛️ Arsitektur", callback_data="menu_arsitektur")],
         [InlineKeyboardButton("💰 Ekonomi Ummat", callback_data="menu_ekonomi")],
-        [InlineKeyboardButton("🚀 Pintasan Layanan Inti", callback_data="menu_quick_links")],
+        [InlineKeyboardButton("🚀 Pintas Layanan Inti", callback_data="menu_quick_links")],
         [InlineKeyboardButton("❓ Help & Subscribe", callback_data="menu_help"),
          InlineKeyboardButton("ℹ️ About", callback_data="menu_about")],
     ]
@@ -304,7 +358,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "super_admin": "🖥️ Dashboard Super Admin",
             "kesehatan": "🩺 Dashboard Kesehatan",
             "lazis": "💰 Dashboard Lazis",
-            "masjid": "🕌 Dashboard Masjid"
+            "masjid": "🕌 Dashboard Masjid",
+            "admin_lembaga": "🖥️ Dashboard Admin Lembaga",  # ← BARU
         }
         tombol_label = label_map.get(role, "🖥️ Dashboard Admin")
         
@@ -533,6 +588,103 @@ async def cmd_verifikasi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
 
+# =====================================================================
+# COMMAND: /mode_verifikasi — Switch mode verifikasi wakaf
+# =====================================================================
+
+async def cmd_mode_verifikasi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command /mode_verifikasi [super_only|multi_admin]"""
+    if not is_super_admin(update.effective_user.id):
+        await update.message.reply_text("❌ Hanya Super Admin.")
+        return
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS program_config (key TEXT PRIMARY KEY, value TEXT)")
+    c.execute("SELECT value FROM program_config WHERE key='wakaf_verification_mode'")
+    row = c.fetchone()
+    current = row[0] if row else 'super_only'
+    conn.close()
+    
+    if not context.args:
+        text = (
+            f"⚙️ *MODE VERIFIKASI WAKAF*\n\n"
+            f"Mode saat ini: *{current}*\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"*Pilihan:*\n"
+            f"• `super_only` — hanya Super Admin\n"
+            f"• `multi_admin` — Super Admin + Admin Lembaga\n\n"
+            f"*Ubah:*\n"
+            f"`/mode_verifikasi super_only`\n"
+            f"`/mode_verifikasi multi_admin`"
+        )
+        await safe_reply(update.message, text)
+        return
+    
+    new_mode = context.args[0].strip().lower()
+    if new_mode not in ('super_only', 'multi_admin'):
+        await update.message.reply_text(
+            "❌ Mode harus `super_only` atau `multi_admin`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS program_config (key TEXT PRIMARY KEY, value TEXT)""")
+    c.execute("""INSERT OR REPLACE INTO program_config (key, value, updated_at)
+                 VALUES ('wakaf_verification_mode', ?, CURRENT_TIMESTAMP)""", (new_mode,))
+    conn.commit()
+    conn.close()
+    
+    icon = "🔒" if new_mode == 'super_only' else "🌐"
+    label = "Hanya Super Admin" if new_mode == 'super_only' else "Super Admin + Admin Lembaga"
+    
+    await update.message.reply_text(
+        f"{icon} Mode verifikasi diubah ke *{new_mode}*\n\n"
+        f"_{label}_",
+        parse_mode='Markdown'
+    )
+    logger.info(f"⚙️ Mode verifikasi wakaf → {new_mode} oleh {update.effective_user.id}")
+
+# =====================================================================
+# COMMAND: /debug_role — Debug role user (temporary)
+# =====================================================================
+
+async def cmd_debug_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command /debug_role — tampilkan user_id + role untuk debugging."""
+    user = update.effective_user
+    user_id = user.id
+    role = get_user_role(user_id)
+    nama = user.first_name or "?"
+    username = user.username or "?"
+    
+    # Ambil info dari users_config
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT nama_lengkap, role, status, lembaga_id FROM users_config WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        db_info = (
+            f"  • Nama DB: {row[0] or '-'}\n"
+            f"  • Role DB: {row[1] or '-'}\n"
+            f"  • Status: {row[2] or '-'}\n"
+            f"  • Lembaga: {row[3] or '-'}"
+        )
+    else:
+        db_info = "  ⚠️ Tidak ada di users_config"
+    
+    text = (
+        f"🔍 *DEBUG ROLE*\n\n"
+        f"🆔 User ID: `{user_id}`\n"
+        f"👤 Nama: {nama}\n"
+        f"🔗 Username: @{username}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🎭 *Role Aktif:* `{role or 'None'}`\n\n"
+        f"*Dari users_config:*\n{db_info}"
+    )
+    
+    await update.message.reply_text(text, parse_mode='Markdown')    
+
 
 async def handle_approve_lembaga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -575,6 +727,52 @@ async def cmd_tugaskan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     tugaskan_admin(target_user, masjid_id, layanan)
     await update.message.reply_text(f"✅ User {target_user} ditugaskan di Masjid ID {masjid_id} untuk layanan {layanan}.")
+
+# =====================================================================
+# HANDLER: MITRA ALAM — DAFTAR KOMODITAS DINAMIS
+# =====================================================================
+
+async def handle_mitra_alam_komoditas(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tampilkan daftar komoditas dengan harga dari database."""
+    query = update.callback_query
+    await query.answer()
+    
+    try:
+        from modul_mitra_alam import get_semua_komoditas
+        komoditas = get_semua_komoditas()
+    except Exception as e:
+        logger.error(f"Gagal load komoditas: {e}")
+        await safe_edit(query, "⚠️ Gagal memuat data komoditas.")
+        return
+    
+    if not komoditas:
+        await safe_edit(query, "😔 Belum ada komoditas aktif.")
+        return
+    
+    text = "🌳 *KOMODITAS WAKAF PRODUKTIF TANAMAN*\n\n"
+    text += "Setiap pohon ditanam di lahan wakaf masjid/pesantren.\n"
+    text += "Dipantau via NFC, hasil panen kembali untuk ummat.\n\n"
+    text += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    for k in komoditas:
+        harga_str = f"Rp {int(k['harga_pohon']):,}".replace(",", ".")
+        text += f"*{k['nama_display']}*\n"
+        text += f"  💰 {harga_str}/pohon\n"
+        text += f"  🌾 {k['output']}\n"
+        text += f"  ⏱️ Panen: {k['siklus_panen']}\n"
+        text += f"  💵 {k['nilai_ekonomi']}\n"
+        text += f"  🌿 {k['fungsi_ekologis']}\n\n"
+    
+    text += "━━━━━━━━━━━━━━━━━━━━\n"
+    text += "_Buka Mini App untuk wakaf & lihat detail._"
+    
+    url_katalog = f"{MINI_APP_URL}/mitra-alam/katalog?t={int(time.time())}"
+    keyboard = [
+        [InlineKeyboardButton("🌱 Wakaf Sekarang (Buka Katalog)",
+                              web_app=WebAppInfo(url=url_katalog))],
+        [InlineKeyboardButton("⬅️ Kembali", callback_data="menu_tanam")],
+    ]
+    await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
 
 # =====================================================================
 # 8.1. COMMAND IDTV
@@ -638,7 +836,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = ""
 
     if data == "menu_morning":
-        text = "🌅 **MORNING MENU - RAUDHA**\n\nMorning has broken - Awali pagi hari dengan dzikir dan inspirasi pagi:"
+        text = "🌅 MORNING MENU - RAUDHA\n\nMorning has broken - Awali pagi hari dengan dzikir dan inspirasi pagi:"
         keyboard = [
             [InlineKeyboardButton("☀️ Dzikir Pagi Singkat", callback_data="run_dzikir_pagi")],
             [InlineKeyboardButton("📜 Inspirasi Pagi Ini", callback_data="run_inspirasi")],
@@ -647,7 +845,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_doa":
         text = (
-            "🤲 **MENU DOA - RAUDHA**\n\n"
+            "🤲 MENU DOA - RAUDHA\n\n"
             "_Berdoalah kepada-Ku, niscaya akan Aku ijabah/perkenankan bagimu._\n(QS. Ghafir: 60).\n\n"
             "Silakan pilih rumpun doa yang ingin Anda amalkan di bawah ini:"
         )
@@ -660,7 +858,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "sub_doa_pilihan":
         text = (
-            "📖 **MENU DOA PILIHAN & SHALAWAT**\n\n"
+            "📖 MENU DOA PILIHAN & SHALAWAT\n\n"
             "Kumpulan doa agung, munajat, amalan malam Jum'at, serta untaian shalawat."
         )
         keyboard = [
@@ -673,20 +871,34 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_tanam":
         text = (
-            "🌱 **MENU TANAM RAUDHA**\n\n"
-            "Selamat datang di gerakan Raudha Tanam: Jadikan Halaman Ini Menjadi Taman - Wasiat.\n\n"
-            "Silakan pilih program kontribusi tanam pohon amal  -jariah- di bawah ini:"
+            "🌱 *MITRA ALAM RAUDHA*\n\n"
+            "_Jadikan Halaman Ini Menjadi Taman Wasiat_\n\n"
+            "Gerakan wakaf produktif berbasis teknologi NFC.\n"
+            "Setiap pohon ditanam di lahan wakaf masjid/pesantren, "
+            "dipantau pertumbuhannya, dan hasil panennya kembali untuk ummat.\n\n"
+            "Silakan pilih program:"
         )
+        url_katalog = f"{MINI_APP_URL}/mitra-alam/katalog?t={int(time.time())}"
+        url_pesantren = f"{MINI_APP_URL}/pesantren-alam?t={int(time.time())}"
+        url_pohon_saya = f"{MINI_APP_URL}/mitra-alam/pohon-saya?t={int(time.time())}"
+        
         keyboard = [
-            [InlineKeyboardButton("🌳 Wakaf Produktif Tanaman", url="https://google.com")],
-            [InlineKeyboardButton("📖 Pesantren Alam Raudha Mar'i Mar'a", url="https://google.com")],
-            [InlineKeyboardButton("⬅️ Kembali ke Menu Utama", callback_data="back_to_main")],
+            [InlineKeyboardButton("🌳 Wakaf Produktif Tanaman",
+                                  web_app=WebAppInfo(url=url_katalog))],
+            [InlineKeyboardButton("🏫 Pesantren Alam Raudha Mar'i Mar'a",
+                                  web_app=WebAppInfo(url=url_pesantren))],
+            [InlineKeyboardButton("📊 Dashboard Pohon Saya",
+                                  web_app=WebAppInfo(url=url_pohon_saya))],
+            [InlineKeyboardButton("📖 Tentang Program",
+                                  callback_data="mitra_alam_about")],
+            [InlineKeyboardButton("⬅️ Kembali ke Menu Utama",
+                                  callback_data="back_to_main")],
         ]
 
     elif data == "menu_arsitektur":
         url_arsitektur = f"{MINI_APP_URL}/arsitektur?t={int(time.time())}"
         text = (
-            "🏛️ **LAYANAN ARSITEKTUR & MANAJEMEN PROYEK RAUDHA**\n\n"
+            "🏛️ LAYANAN ARSITEKTUR & MANAJEMEN PROYEK RAUDHA\n\n"
             "Kami menyediakan layanan desain unyuk menghadirkan ruang ibadah dan fasilitas sosial yang estetik, "
             "berkah, serta memenuhi standar ketat keselamatan & keamanan bangunan.\n\n"
             "**Keahlian Bersertifikasi Kami:**\n"
@@ -786,7 +998,7 @@ async def handle_submenus(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = (
             "ℹ️ **TENTANG PLATFORM RAUDHA**\n\n"
             "Bot Raudha adalah asisten virtual penyelarasan tiga esensi kehidupan Ummat:\n"
-            "🌱 Tanam - Menanam amal kebaikan secara mudah, 🏛️ Arsitektur - menciptakan tempat ibadah yang nyaman, 🤲 Spiritualitas - manfaatkan sarana teknologi untuk kemudahan ibadah."
+            "🌱 Mitra Alam - Menanam amal jariah lewat alam, 🏛️ Arsitektur - menciptakan tempat ibadah yang nyaman, 🤲 Spiritualitas - manfaatkan sarana teknologi untuk kemudahan ibadah."
         )
         keyboard = [[InlineKeyboardButton("⬅️ Kembali", callback_data="back_to_main")]]
 
@@ -1155,6 +1367,39 @@ async def handle_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # =====================================================================
+# HANDLER: MITRA ALAM — TENTANG PROGRAM
+# =====================================================================
+
+async def handle_mitra_alam_about(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Halaman 'Tentang Program' Mitra Alam."""
+    query = update.callback_query
+    await query.answer()
+    
+    text = (
+        "📖 *TENTANG RAUDHA MITRA ALAM*\n\n"
+        "Program wakaf produktif berbasis teknologi NFC yang "
+        "menghubungkan empat pihak:\n\n"
+        "👤 *Muwakif* — jamaah pemberi wakaf\n"
+        "🕌 *Masjid/Pesantren* — penerima manfaat (mauquf 'alaih)\n"
+        "🌍 *Lahan* — pekarangan masjid / lahan wakaf\n"
+        "📡 *Teknologi* — NFC tag di setiap pohon untuk transparansi\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "*Skema Bagi Hasil Panen:*\n"
+        "• 70% → Masjid/Pesantren\n"
+        "• 20% → Biaya Perawatan & Operasional\n"
+        "• 10% → Pengelolaan Raudha\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "*Komoditas:*\n"
+        "🌴 Kurma Hibrida • ☕ Kopi Wulung • 🪵 Kayu Jati • "
+        "🪵 Kayu Balsa • 🌴 Aren\n\n"
+        "_Wakaf tidak mengurangi pahala — justru menambah amal jariyah "
+        "yang mengalir terus-menerus._"
+    )
+    keyboard = [[InlineKeyboardButton("⬅️ Kembali ke Mitra Alam",
+                                       callback_data="menu_tanam")]]
+    await safe_edit(query, text, InlineKeyboardMarkup(keyboard))
+
+# =====================================================================
 # NOTIFIKASI REAL-TIME (Batch 7)
 # =====================================================================
 
@@ -1317,6 +1562,162 @@ async def cek_pembayaran_diverifikasi(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"[NOTIF] cek_pembayaran_diverifikasi error: {e}")
 
+# =====================================================================
+# NOTIFIKASI WAKAF POHON (MITRA ALAM) — STEP 7
+# =====================================================================
+
+async def cek_wakaf_diverifikasi(context: ContextTypes.DEFAULT_TYPE):
+    """Polling: notifikasi khusus wakaf pohon yang sudah diverifikasi."""
+    try:
+        conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+        
+        c.execute("""CREATE TABLE IF NOT EXISTS notif_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipe TEXT, ref_id INTEGER, target_user_id INTEGER,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(tipe, ref_id, target_user_id)
+        )""")
+        
+        c.execute("""SELECT rp.id, rp.user_id, rp.nominal, rp.keterangan, rp.lembaga_id
+                     FROM rencana_pembayaran rp
+                     WHERE rp.jenis_kewajiban='wakaf_pohon'
+                       AND rp.status='diverifikasi'
+                       AND NOT EXISTS (
+                         SELECT 1 FROM notif_log nl 
+                         WHERE nl.tipe='wakaf_diverifikasi' 
+                           AND nl.ref_id = rp.id
+                       )
+                     LIMIT 5""")
+        rows = c.fetchall()
+        conn.close()
+        
+        for rencana_id, user_id, nominal, keterangan, lembaga_id in rows:
+            conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+            c.execute("SELECT nama FROM lembaga_amil WHERE id=?", (lembaga_id,))
+            row_lem = c.fetchone()
+            nama_lembaga = row_lem[0] if row_lem else "Lembaga"
+            
+            c.execute("""SELECT COUNT(*) FROM pohon_wakaf 
+                         WHERE rencana_id=? AND status='aktif'""", (rencana_id,))
+            jumlah_pohon = c.fetchone()[0]
+            
+            c.execute("""SELECT k.nama_display FROM pohon_wakaf p
+                         JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                         WHERE p.rencana_id=? LIMIT 1""", (rencana_id,))
+            row_kom = c.fetchone()
+            nama_komoditas = row_kom[0] if row_kom else "Pohon"
+            conn.close()
+            
+            nominal_str = f"Rp {int(nominal):,}".replace(",", ".")
+            
+            try:
+                teks = (
+                    f"🎉 *Wakaf Anda Diverifikasi!*\n\n"
+                    f"📋 Transaksi: `#{rencana_id}`\n"
+                    f"🌱 Komoditas: *{nama_komoditas}*\n"
+                    f"🏛️ Lembaga: *{nama_lembaga}*\n"
+                    f"💰 Nominal: *{nominal_str}*\n"
+                    f"🌳 Jumlah Pohon: *{jumlah_pohon} pohon*\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"✅ *Pembayaran telah diverifikasi*\n"
+                    f"🌳 Pohon akan segera ditanam & diberi NFC tag\n"
+                    f"📸 Anda akan menerima foto pohon + sertifikat\n"
+                    f"🌾 Hasil panen: 70% masjid, 20% perawatan, 10% pengelolaan\n\n"
+                    f"_Jazakallahu khairan. Amal jariyah Anda sedang berjalan._ 🤲"
+                )
+                await context.bot.send_message(
+                    chat_id=user_id, text=teks, parse_mode='Markdown'
+                )
+                logger.info(f"[NOTIF-WAKAF] Verifikasi #{rencana_id} → user {user_id}")
+                
+                conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+                c.execute("""INSERT OR IGNORE INTO notif_log
+                             (tipe, ref_id, target_user_id)
+                             VALUES ('wakaf_diverifikasi', ?, ?)""",
+                          (rencana_id, user_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                logger.warning(f"[NOTIF-WAKAF] Gagal kirim ke {user_id}: {e}")
+    except Exception as e:
+        logger.error(f"[NOTIF-WAKAF] cek_wakaf_diverifikasi error: {e}")
+
+
+async def cek_wakaf_bukti_baru(context: ContextTypes.DEFAULT_TYPE):
+    """Polling: notifikasi ke admin lembaga saat ada bukti wakaf baru."""
+    try:
+        conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+        
+        c.execute("""CREATE TABLE IF NOT EXISTS notif_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipe TEXT, ref_id INTEGER, target_user_id INTEGER,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(tipe, ref_id, target_user_id)
+        )""")
+        
+        c.execute("""SELECT rp.id, rp.user_id, rp.nominal, rp.lembaga_id
+                     FROM rencana_pembayaran rp
+                     WHERE rp.jenis_kewajiban='wakaf_pohon'
+                       AND rp.status='dibayar'
+                       AND NOT EXISTS (
+                         SELECT 1 FROM notif_log nl 
+                         WHERE nl.tipe='wakaf_bukti_baru' 
+                           AND nl.ref_id = rp.id
+                       )
+                     LIMIT 5""")
+        rows = c.fetchall()
+        conn.close()
+        
+        for rencana_id, user_id, nominal, lembaga_id in rows:
+            conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+            c.execute("""SELECT user_id, nama_lengkap FROM users_config 
+                         WHERE lembaga_id=? AND role='admin_lembaga' AND status='active'""",
+                      (lembaga_id,))
+            admin_rows = c.fetchall()
+            
+            c.execute("SELECT nama FROM lembaga_amil WHERE id=?", (lembaga_id,))
+            row_lem2 = c.fetchone()
+            nama_lembaga = row_lem2[0] if row_lem2 else "Lembaga"
+            
+            c.execute("SELECT nama_lengkap FROM users_config WHERE user_id=?", (user_id,))
+            row_user = c.fetchone()
+            nama_user = row_user[0] if row_user else f"User #{user_id}"
+            conn.close()
+            
+            nominal_str = f"Rp {int(nominal):,}".replace(",", ".")
+            
+            for admin_id, admin_nama in admin_rows:
+                if admin_id == user_id:
+                    continue
+                try:
+                    teks = (
+                        f"💰 *Bukti Transfer Wakaf Baru!*\n\n"
+                        f"📋 Transaksi: `#{rencana_id}`\n"
+                        f"👤 Dari: {nama_user}\n"
+                        f"🏛️ Lembaga: *{nama_lembaga}*\n"
+                        f"💵 Nominal: *{nominal_str}*\n\n"
+                        f"🔗 Buka Mini App → Dashboard Admin → 🌱 Verifikasi Wakaf"
+                    )
+                    await context.bot.send_message(
+                        chat_id=admin_id, text=teks, parse_mode='Markdown'
+                    )
+                    logger.info(f"[NOTIF-WAKAF] Bukti #{rencana_id} → admin {admin_id}")
+                except Exception as e:
+                    logger.warning(f"[NOTIF-WAKAF] Gagal ke {admin_id}: {e}")
+            
+            conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+            for admin_id, _ in admin_rows:
+                if admin_id == user_id:
+                    continue
+                c.execute("""INSERT OR IGNORE INTO notif_log
+                             (tipe, ref_id, target_user_id)
+                             VALUES ('wakaf_bukti_baru', ?, ?)""",
+                          (rencana_id, admin_id))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"[NOTIF-WAKAF] cek_wakaf_bukti_baru error: {e}")
+
 
 async def cek_pengajuan_lembaga_baru(context: ContextTypes.DEFAULT_TYPE):
     """Polling: cek pengajuan lembaga baru (status=pending) yang belum dinotifikasi."""
@@ -1437,52 +1838,210 @@ async def backup_database(context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"[BACKUP] Error: {e}")
 
 
-async def cleanup_backup_manual(context: ContextTypes.DEFAULT_TYPE):
-    """Command admin: bersihkan backup manual."""
-    if not ADMIN_ID or (update := None) is None:
-        pass
+# =====================================================================
+# BACKUP MINGGUAN PERMANEN + EMAIL
+# =====================================================================
 
+def kirim_email_backup(filepath, filename):
+    """Kirim file backup via email. Return True kalau sukses."""
+    if not all([SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_TO]):
+        logger.warning("[EMAIL] SMTP belum dikonfigurasi, skip")
+        return False
+
+    try:
+        size_mb = os.path.getsize(filepath) / 1024 / 1024
+
+        msg = MIMEMultipart()
+        msg['From']    = SMTP_USER
+        msg['To']      = SMTP_TO
+        msg['Subject'] = f"🗄️ Backup Raudha Mingguan — {filename}"
+        msg.attach(MIMEText(
+            f"Assalamu'alaikum,\n\n"
+            f"Backup database Raudha otomatis (mingguan).\n\n"
+            f"📅 Tanggal : {_dt.now().strftime('%d %B %Y, %H:%M WIB')}\n"
+            f"📦 Ukuran  : {size_mb:.2f} MB\n"
+            f"📄 File    : {filename}\n\n"
+            f"File terlampir. Simpan di tempat aman.\n\n"
+            f"— Raudha Spiritual Accountant",
+            'plain', 'utf-8'
+        ))
+
+        with open(filepath, 'rb') as f:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+            msg.attach(part)
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=60) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+
+        logger.info(f"[EMAIL] Backup terkirim ke {SMTP_TO}")
+        return True
+    except Exception as e:
+        logger.error(f"[EMAIL] Gagal kirim backup: {e}")
+        return False
+
+
+async def backup_mingguan(context: ContextTypes.DEFAULT_TYPE):
+    """
+    Backup mingguan permanen:
+    - Copy DB ke backups_weekly/ (tidak pernah dihapus)
+    - Kirim ke admin via Telegram
+    - Kirim ke email via SMTP
+    """
+    try:
+        if not os.path.exists(DB_PATH):
+            logger.error(f"[BACKUP-MINGGUAN] DB tidak ditemukan: {DB_PATH}")
+            return
+
+        timestamp = _dt.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename  = f"raudha_weekly_{timestamp}.db"
+        filepath  = os.path.join(BACKUP_WEEKLY_DIR, filename)
+
+        shutil.copy2(DB_PATH, filepath)
+        size_mb      = os.path.getsize(filepath) / 1024 / 1024
+        total_weekly = len([x for x in os.listdir(BACKUP_WEEKLY_DIR) if x.endswith('.db')])
+        logger.info(f"[BACKUP-MINGGUAN] {filename} ({size_mb:.2f} MB) — total {total_weekly} file")
+
+        # 1. Kirim ke admin via Telegram
+        if ADMIN_ID:
+            try:
+                with open(filepath, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=ADMIN_ID,
+                        document=f,
+                        filename=filename,
+                        caption=(
+                            f"🗄️ *Backup Mingguan Permanen*\n\n"
+                            f"📅 {_dt.now().strftime('%d %B %Y, %H:%M WIB')}\n"
+                            f"📦 {size_mb:.2f} MB\n"
+                            f"🗂️ Total backup mingguan: {total_weekly} file\n\n"
+                            f"_Backup ini tidak akan dihapus otomatis._"
+                        ),
+                        parse_mode='Markdown'
+                    )
+                logger.info(f"[BACKUP-MINGGUAN] Terkirim ke admin {ADMIN_ID}")
+            except Exception as e:
+                logger.warning(f"[BACKUP-MINGGUAN] Gagal kirim Telegram: {e}")
+
+        # 2. Kirim via email
+        kirim_email_backup(filepath, filename)
+
+    except Exception as e:
+        logger.error(f"[BACKUP-MINGGUAN] Error: {e}")
+
+
+# =====================================================================
+# COMMAND BACKUP — HARIAN, LIST, MINGGUAN, TEST EMAIL
+# =====================================================================
 
 async def cmd_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Command /backup — backup manual dari admin."""
+    """Command /backup — backup harian manual."""
     user_id = update.effective_user.id
     if not ADMIN_ID or user_id != ADMIN_ID:
         await update.message.reply_text("❌ Anda bukan admin.")
         return
-    
+
     await update.message.reply_text("⏳ Memulai backup...")
     await backup_database(context)
     await update.message.reply_text("✅ Backup selesai. Cek chat untuk file backup.")
 
 
 async def cmd_list_backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Command /listbackup — lihat daftar backup."""
+    """Command /listbackup — lihat daftar backup harian."""
     user_id = update.effective_user.id
     if not ADMIN_ID or user_id != ADMIN_ID:
         await update.message.reply_text("❌ Anda bukan admin.")
         return
-    
+
     try:
         files = [f for f in os.listdir(BACKUP_DIR) if f.endswith('.db')]
         files.sort(reverse=True)
-        
+
         if not files:
             await update.message.reply_text("📭 Belum ada backup.")
             return
-        
-        text = f"🗄️ *Daftar Backup ({len(files)})*\n\n"
+
+        text = f"🗄️ *Daftar Backup Harian ({len(files)})*\n\n"
         for f in files[:10]:
             fpath = os.path.join(BACKUP_DIR, f)
-            size = os.path.getsize(fpath) / 1024 / 1024
+            size  = os.path.getsize(fpath) / 1024 / 1024
             mtime = _dt.fromtimestamp(os.path.getmtime(fpath)).strftime('%d/%m/%Y %H:%M')
             text += f"• `{f}`\n  {size:.2f} MB — {mtime}\n\n"
-        
+
         if len(files) > 10:
             text += f"_... dan {len(files) - 10} lainnya_"
-        
+
         await update.message.reply_text(text, parse_mode='Markdown')
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
+
+
+async def cmd_backup_mingguan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command /backupmingguan — backup mingguan manual."""
+    user_id = update.effective_user.id
+    if not ADMIN_ID or user_id != ADMIN_ID:
+        await update.message.reply_text("❌ Anda bukan admin.")
+        return
+
+    await update.message.reply_text("⏳ Memulai backup mingguan...")
+    await backup_mingguan(context)
+    await update.message.reply_text("✅ Backup mingguan selesai. Cek chat & email.")
+
+
+async def cmd_test_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command /testemail — test koneksi SMTP."""
+    user_id = update.effective_user.id
+    if not ADMIN_ID or user_id != ADMIN_ID:
+        await update.message.reply_text("❌ Anda bukan admin.")
+        return
+
+    if not all([SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_TO]):
+        await update.message.reply_text(
+            "❌ SMTP belum dikonfigurasi di `.env`.\n\n"
+            "Tambahkan:\n"
+            "`SMTP_HOST=smtp.gmail.com`\n"
+            "`SMTP_PORT=587`\n"
+            "`SMTP_USER=raudhamitradana@gmail.com`\n"
+            "`SMTP_PASS=xxxx xxxx xxxx xxxx`\n"
+            "`SMTP_TO=raudharealty@gmail.com`",
+            parse_mode='Markdown'
+        )
+        return
+
+    await update.message.reply_text("⏳ Mengirim test email...")
+
+    try:
+        msg = MIMEMultipart()
+        msg['From']    = SMTP_USER
+        msg['To']      = SMTP_TO
+        msg['Subject'] = "✅ Test Email — Raudha Backup"
+        msg.attach(MIMEText(
+            f"Test koneksi SMTP berhasil.\n\n"
+            f"Dikirim: {_dt.now().strftime('%d %B %Y, %H:%M WIB')}\n\n"
+            f"Backup otomatis mingguan akan dikirim ke email ini "
+            f"setiap Minggu 00:05 WIB.",
+            'plain', 'utf-8'
+        ))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+
+        await update.message.reply_text(
+            f"✅ Test email terkirim ke `{SMTP_TO}`.",
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ Gagal kirim email:\n`{e}`",
+            parse_mode='Markdown'
+        )
+
 
 # =====================================================================
 # RESTORE DATABASE (Batch 16b)
@@ -1879,7 +2438,958 @@ async def handle_rsvp_telepon(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data.pop('rsvp_program_id', None)
     context.user_data.pop('rsvp_nama', None)
     
-    await update.message.reply_text(pesan, parse_mode='Markdown')    
+    await update.message.reply_text(pesan, parse_mode='Markdown')   
+
+
+# =====================================================================
+# HANDLER: /pohon — Petugas Input Pohon Fisik (NFC)
+# =====================================================================
+
+# State konstan untuk percakapan /pohon
+POHON_STATE_UID = "pohon_uid"
+POHON_STATE_FOTO = "pohon_foto"
+POHON_STATE_TINGGI = "pohon_tinggi"
+POHON_STATE_KONDISI = "pohon_kondisi"
+
+
+def _is_petugas(user_id):
+    """Cek apakah user boleh input pohon (super admin atau admin lembaga aktif)."""
+    if is_super_admin(user_id):
+        return True
+    role_info = get_user_role(user_id)
+    return role_info.get("role") == "admin_lembaga"
+
+
+async def cmd_input_pohon(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /pohon — Mulai proses input pohon fisik (NFC tagging).
+    Format: /pohon [uid]  (uid opsional; kalau tidak ada, bot akan tanya)
+    """
+    if not update.message:
+        return
+    
+    user_id = update.effective_user.id
+    
+    if not _is_petugas(user_id):
+        await update.message.reply_text(
+            "❌ Hanya petugas Mitra Alam (Super Admin / Admin Lembaga) yang bisa input pohon.\n\n"
+            "Silakan hubungi admin untuk didaftarkan."
+        )
+        return
+    
+    # Reset state
+    context.user_data.clear()
+    
+    # Kalau ada argumen langsung (uid)
+    if context.args:
+        uid = context.args[0].strip()
+        return await _proses_uid(update, context, uid)
+    
+    # Kalau tidak ada, tanya
+    context.user_data[POHON_STATE_UID] = True  # state = tunggu UID
+    
+    text = (
+        "🌱 *INPUT POHON BARU — STEP 1/4*\n\n"
+        "Silakan kirim *UID NFC* pohon yang sudah ditanam.\n\n"
+        "📌 *Cara dapat UID:*\n"
+        "• Scan NFC tag dengan HP\n"
+        "• Atau ketik UID yang tercetak di tag\n"
+        "• Contoh: `04A233158C4B80`\n\n"
+        "_Ketik /batal untuk membatalkan._"
+    )
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+
+async def _proses_uid(update, context, uid):
+    """Validasi UID & lanjut ke step foto."""
+    # Bersihkan UID: hapus spasi, titik dua, dll.
+    # Izinkan: huruf, angka, strip, underscore (fleksibel untuk test & UID fisik)
+    uid_clean = re.sub(r'[^A-Za-z0-9_-]', '', uid).upper()
+    
+    if len(uid_clean) < 6:
+        await update.message.reply_text(
+            f"❌ UID tidak valid: `{uid}`\n"
+            f"Silakan kirim ulang (minimal 6 karakter hex).",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Cek UID belum terdaftar
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT id, status FROM pohon_wakaf WHERE nfc_uid=?", (uid_clean,))
+    existing = c.fetchone()
+    conn.close()
+    
+    if existing:
+        await update.message.reply_text(
+            f"⚠️ UID `{uid_clean}` sudah terdaftar!\n"
+            f"• ID: #{existing[0]}\n"
+            f"• Status: {existing[1]}\n\n"
+            f"Kalau ini pohon berbeda, kirim UID lain.\n"
+            f"Kalau mau update log, pakai /logpohon `{uid_clean}`.",
+            parse_mode='Markdown'
+        )
+        context.user_data.clear()
+        return
+    
+    # Simpan UID, lanjut ke foto
+    context.user_data[POHON_STATE_UID] = uid_clean
+    context.user_data[POHON_STATE_FOTO] = True
+    
+    await update.message.reply_text(
+        f"✅ UID: `{uid_clean}`\n\n"
+        f"🌱 *STEP 2/4 — FOTO POHON*\n\n"
+        f"Silakan kirim *foto pohon* yang baru ditanam.\n"
+        f"Pastikan pohon & tag NFC terlihat jelas.\n\n"
+        f"_Ketik /batal untuk membatalkan._",
+        parse_mode='Markdown'
+    )
+
+
+async def _proses_foto(update, context):
+    """Terima foto, simpan URL sementara, lanjut ke tinggi."""
+    message = update.message
+    
+    # Ambil foto terbesar
+    photo = message.photo[-1] if message.photo else None
+    if not photo:
+        await message.reply_text("❌ Kirim foto (bukan dokumen). Coba lagi.")
+        return
+    
+    # Download & simpan
+    try:
+        file = await context.bot.get_file(photo.file_id)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        uid = context.user_data.get(POHON_STATE_UID, "unknown")
+        filename = f"pohon_{uid}_{timestamp}.jpg"
+        filepath = os.path.join(UPLOAD_DOKUMEN, filename)
+        await file.download_to_drive(filepath)
+        url = f"/uploads/dokumen_lembaga/{filename}"
+        logger.info(f"[POHON] Foto tersimpan: {filename}")
+    except Exception as e:
+        logger.error(f"Gagal simpan foto: {e}")
+        await message.reply_text(f"❌ Gagal simpan foto: {e}")
+        return
+    
+    # Simpan URL, lanjut ke tinggi
+    context.user_data[POHON_STATE_FOTO] = url
+    context.user_data[POHON_STATE_TINGGI] = True
+    
+    await message.reply_text(
+        f"✅ Foto diterima.\n\n"
+        f"🌱 *STEP 3/4 — TINGGI POHON*\n\n"
+        f"Silakan kirim *tinggi pohon* dalam cm (angka saja).\n"
+        f"Contoh: `120` (artinya 120 cm)",
+        parse_mode='Markdown'
+    )
+
+
+async def _proses_tinggi(update, context):
+    """Terima tinggi, lanjut ke kondisi."""
+    text = update.message.text.strip()
+    
+    try:
+        tinggi = int(text)
+        if tinggi < 10 or tinggi > 5000:
+            raise ValueError()
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Tinggi tidak valid. Kirim angka antara 10-5000 (cm)."
+        )
+        return
+    
+    context.user_data[POHON_STATE_TINGGI] = tinggi
+    context.user_data[POHON_STATE_KONDISI] = True
+    
+    keyboard = [
+        [InlineKeyboardButton("✅ Sehat", callback_data="pohon_kondisi_sehat")],
+        [InlineKeyboardButton("🟡 Cukup", callback_data="pohon_kondisi_cukup")],
+        [InlineKeyboardButton("⚠️ Lemah", callback_data="pohon_kondisi_lemah")],
+    ]
+    await update.message.reply_text(
+        f"✅ Tinggi: *{tinggi} cm*\n\n"
+        f"🌱 *STEP 4/4 — KONDISI POHON*\n\n"
+        f"Pilih kondisi pohon saat ini:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def _proses_kondisi(update, context, kondisi):
+    """Finalisasi: simpan pohon ke database + log awal."""
+    user_id = update.effective_user.id
+    uid = context.user_data.get(POHON_STATE_UID)
+    foto_url = context.user_data.get(POHON_STATE_FOTO)
+    tinggi = context.user_data.get(POHON_STATE_TINGGI)
+    
+    if not all([uid, foto_url, tinggi]):
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="❌ Data tidak lengkap. Mulai ulang dengan /pohon"
+        )
+        context.user_data.clear()
+        return
+    
+    # Cari pohon yang status 'menunggu_tanam' untuk diupdate
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    try:
+        c.execute("""SELECT id, komoditas_id, lembaga_id, muwakif_id 
+                     FROM pohon_wakaf 
+                     WHERE status='menunggu_tanam' 
+                     ORDER BY id ASC LIMIT 1""")
+        row = c.fetchone()
+        
+        if row:
+            # Update pohon yang sudah ada (dari pembayaran verified)
+            pohon_id, komoditas_id, lembaga_id, muwakif_id = row
+            c.execute("""UPDATE pohon_wakaf SET
+                            nfc_uid=?,
+                            status='aktif',
+                            tanggal_tanam=?,
+                            updated_at=CURRENT_TIMESTAMP
+                         WHERE id=?""",
+                      (uid, date.today().strftime("%Y-%m-%d"), pohon_id))
+            action = "diperbarui"
+        else:
+            # Kalau tidak ada pohon 'menunggu_tanam', buat baru (pohon donasi/umum)
+            # Gunakan komoditas default & lembaga default
+            c.execute("SELECT id FROM komoditas_wakaf WHERE aktif=1 LIMIT 1")
+            kom_row = c.fetchone()
+            komoditas_id = kom_row[0] if kom_row else 1
+            
+            c.execute("SELECT id FROM lembaga_amil WHERE status='verified' LIMIT 1")
+            lem_row = c.fetchone()
+            lembaga_id = lem_row[0] if lem_row else 1
+            
+            c.execute("""INSERT INTO pohon_wakaf
+                         (nfc_uid, komoditas_id, tanggal_tanam, lembaga_id,
+                          muwakif_id, harga_pohon, status, updated_at)
+                         VALUES (?, ?, ?, ?, NULL, 0, 'aktif', CURRENT_TIMESTAMP)""",
+                      (uid, komoditas_id, date.today().strftime("%Y-%m-%d"), lembaga_id))
+            pohon_id = c.lastrowid
+            action = "dibuat baru"
+        
+        # Tambah log awal
+        c.execute("""INSERT INTO pohon_log
+                     (pohon_id, tanggal, tipe, nilai, foto_url, catatan, petugas_id)
+                     VALUES (?, ?, 'foto', ?, ?, 'Penanaman awal + NFC tagging', ?)""",
+                  (pohon_id, date.today().strftime("%Y-%m-%d"),
+                   f"tinggi={tinggi}cm, kondisi={kondisi}", foto_url, user_id))
+        
+        c.execute("""INSERT INTO pohon_log
+                     (pohon_id, tanggal, tipe, nilai, catatan, petugas_id)
+                     VALUES (?, ?, 'tinggi', ?, 'Pengukuran awal', ?)""",
+                  (pohon_id, date.today().strftime("%Y-%m-%d"),
+                   f"{tinggi} cm", user_id))
+        
+        c.execute("""INSERT INTO pohon_log
+                     (pohon_id, tanggal, tipe, nilai, catatan, petugas_id)
+                     VALUES (?, ?, 'kondisi', ?, 'Kondisi awal penanaman', ?)""",
+                  (pohon_id, date.today().strftime("%Y-%m-%d"), kondisi, user_id))
+        
+        conn.commit()
+        
+        text = (
+            f"🎉 *POHON BERHASIL DICATAT!*\n\n"
+            f"🆔 Pohon ID: *#{pohon_id}* ({action})\n"
+            f"📡 NFC UID: `{uid}`\n"
+            f"📏 Tinggi: *{tinggi} cm*\n"
+            f"💚 Kondisi: *{kondisi}*\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🌐 *Cek di web:*\n"
+            f"`{MINI_APP_URL}/pohon/{uid}`\n\n"
+            f"📸 Foto & log tersimpan. Petugas dapat menambah log "
+            f"berkala dengan /logpohon `{uid}`.\n\n"
+            f"_Jazakallahu khairan untuk kerja lapangannya._ 🤲"
+        )
+        
+        await context.bot.send_message(
+            chat_id=user_id, text=text, parse_mode='Markdown'
+        )
+        logger.info(f"🌱 Pohon #{pohon_id} {action}: UID={uid}, tinggi={tinggi}cm, "
+                    f"kondisi={kondisi}, petugas={user_id}")
+        
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Gagal simpan pohon: {e}")
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"❌ Error: {e}"
+        )
+    finally:
+        conn.close()
+        context.user_data.clear()
+
+
+async def handle_pohon_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Router: tangkap input user berdasarkan state /pohon."""
+    ud = context.user_data
+    
+    # Kalau state UID aktif (tunggu UID)
+    if ud.get(POHON_STATE_UID) is True:
+        if update.message.text:
+            await _proses_uid(update, context, update.message.text)
+        return
+    
+    # Kalau state FOTO aktif (tunggu foto)
+    if ud.get(POHON_STATE_FOTO) is True:
+        if update.message.photo:
+            await _proses_foto(update, context)
+        elif update.message.text:
+            await update.message.reply_text("❌ Kirim *foto* pohon (bukan teks). Coba lagi.", parse_mode='Markdown')
+        return
+    
+    # Kalau state TINGGI aktif
+    if ud.get(POHON_STATE_TINGGI) is True and isinstance(ud.get(POHON_STATE_TINGGI), bool):
+        if update.message.text:
+            await _proses_tinggi(update, context)
+        return
+    
+    # Kalau state KONDISI aktif (tunggu klik tombol)
+    if ud.get(POHON_STATE_KONDISI) is True:
+        if update.message.text:
+            await update.message.reply_text(
+                "❌ Silakan klik tombol kondisi di atas (Sehat/Cukup/Lemah)."
+            )
+        return
+
+
+async def handle_pohon_kondisi_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler tombol kondisi pohon."""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    kondisi_map = {
+        "pohon_kondisi_sehat": "sehat",
+        "pohon_kondisi_cukup": "cukup",
+        "pohon_kondisi_lemah": "lemah",
+    }
+    kondisi = kondisi_map.get(data)
+    if not kondisi:
+        return
+    
+    # Ganti pesan tombol jadi status
+    await safe_edit(query, f"✅ Kondisi dipilih: *{kondisi.title()}*\n\n⏳ Menyimpan...", parse_mode='Markdown')
+    
+    # Buat fake update message untuk _proses_kondisi
+    # (kita panggil langsung dengan context)
+    class FakeMessage:
+        pass
+    
+    # Panggil langsung _proses_kondisi (dia pakai context.bot.send_message)
+    await _proses_kondisi(update, context, kondisi)
+
+
+# =====================================================================
+# HANDLER: /logpohon — Update Log Berkala Pohon (Step 11)
+# =====================================================================
+
+LOG_POHON_ID = "log_pohon_id"
+LOG_POHON_INFO = "log_pohon_info"
+LOG_TIPE = "log_tipe"
+
+
+async def cmd_logpohon(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /logpohon <uid> — Update log berkala untuk pohon yang sudah ada.
+    """
+    if not update.message:
+        return
+    
+    user_id = update.effective_user.id
+    
+    if not _is_petugas(user_id):
+        await update.message.reply_text(
+            "❌ Hanya petugas Mitra Alam (Super Admin / Admin Lembaga) "
+            "yang bisa update log pohon."
+        )
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ Format: `/logpohon [NFC UID]`\n\n"
+            "Contoh: `/logpohon TEST003GHI`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    uid = context.args[0].strip().upper()
+    
+    # Cek pohon ada
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT p.id, p.nfc_uid, k.nama_display, p.status
+                 FROM pohon_wakaf p
+                 JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                 WHERE p.nfc_uid=?""", (uid,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        await update.message.reply_text(
+            f"❌ Pohon dengan UID `{uid}` tidak ditemukan.\n\n"
+            f"Pastikan UID benar atau input pohon baru dengan `/pohon`.",
+            parse_mode='Markdown'
+        )
+        return
+    
+    pohon_id, nfc_uid, komoditas, status = row
+    
+    # Simpan state
+    context.user_data.clear()
+    context.user_data[LOG_POHON_ID] = pohon_id
+    context.user_data[LOG_POHON_INFO] = f"{komoditas} #{pohon_id}"
+    
+    # Tampilkan menu tipe log
+    keyboard = [
+        [InlineKeyboardButton("📸 Foto Baru", callback_data="log_tipe_foto")],
+        [InlineKeyboardButton("📏 Tinggi", callback_data="log_tipe_tinggi")],
+        [InlineKeyboardButton("💚 Kondisi", callback_data="log_tipe_kondisi")],
+        [InlineKeyboardButton("🌿 Pemupukan", callback_data="log_tipe_pupuk")],
+        [InlineKeyboardButton("⚠️ Penyakit/Hama", callback_data="log_tipe_penyakit")],
+        [InlineKeyboardButton("🌾 Panen", callback_data="log_tipe_panen")],
+        [InlineKeyboardButton("⬅️ Batal", callback_data="log_tipe_batal")],
+    ]
+    await update.message.reply_text(
+        f"🌳 *POHON: {komoditas} #{pohon_id}*\n"
+        f"📡 UID: `{nfc_uid}`\n"
+        f"Status: {status}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Pilih *tipe log* yang ingin dicatat:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def handle_log_tipe_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler pilihan tipe log."""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    
+    if data == "log_tipe_batal":
+        context.user_data.clear()
+        await safe_edit(query, "❌ Update log dibatalkan.")
+        return
+    
+    pohon_id = context.user_data.get(LOG_POHON_ID)
+    if not pohon_id:
+        await safe_edit(query, "⚠️ Sesi kadaluarsa. Mulai ulang `/logpohon`.")
+        return
+    
+    tipe = data.replace("log_tipe_", "")
+    context.user_data[LOG_TIPE] = tipe
+    pohon_info = context.user_data.get(LOG_POHON_INFO, "Pohon")
+    
+    if tipe == "foto":
+        await safe_edit(query, 
+            f"📸 *FOTO BARU untuk {pohon_info}*\n\n"
+            f"Silakan kirim *foto pohon* terbaru.\n\n"
+            f"_Ketik /batal untuk membatalkan._",
+            parse_mode='Markdown')
+    
+    elif tipe == "tinggi":
+        await safe_edit(query,
+            f"📏 *TINGGI BARU untuk {pohon_info}*\n\n"
+            f"Silakan kirim *tinggi pohon* dalam cm (angka saja).\n"
+            f"Contoh: `145`",
+            parse_mode='Markdown')
+    
+    elif tipe == "kondisi":
+        keyboard = [
+            [InlineKeyboardButton("✅ Sehat", callback_data="log_kondisi_sehat")],
+            [InlineKeyboardButton("🟡 Cukup", callback_data="log_kondisi_cukup")],
+            [InlineKeyboardButton("⚠️ Lemah", callback_data="log_kondisi_lemah")],
+        ]
+        await safe_edit(query,
+            f"💚 *KONDISI untuk {pohon_info}*\n\n"
+            f"Pilih kondisi pohon saat ini:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown')
+    
+    elif tipe == "pupuk":
+        await safe_edit(query,
+            f"🌿 *PEMUPUKAN untuk {pohon_info}*\n\n"
+            f"Silakan kirim keterangan pemupukan:\n"
+            f"Contoh: `Pupuk kandang 5kg, NPK 100g`\n\n"
+            f"_Ketik /batal untuk membatalkan._",
+            parse_mode='Markdown')
+    
+    elif tipe == "penyakit":
+        await safe_edit(query,
+            f"⚠️ *PENYAKIT/HAMA untuk {pohon_info}*\n\n"
+            f"Silakan kirim keterangan penyakit/hama:\n"
+            f"Contoh: `Daun menguning, kutu putih`\n\n"
+            f"_Ketik /batal untuk membatalkan._",
+            parse_mode='Markdown')
+    
+    elif tipe == "panen":
+        await safe_edit(query,
+            f"🌾 *PANEN untuk {pohon_info}*\n\n"
+            f"Silakan kirim hasil panen:\n"
+            f"Format: `berat_kg` atau `berat_kg | keterangan`\n"
+            f"Contoh: `5` atau `5 | buah manis`\n\n"
+            f"_Ketik /batal untuk membatalkan._",
+            parse_mode='Markdown')
+
+
+async def handle_log_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Router input untuk /logpohon (foto, tinggi, kondisi, dll)."""
+    if not update.message:
+        return
+    
+    pohon_id = context.user_data.get(LOG_POHON_ID)
+    if not pohon_id:
+        return
+    
+    tipe = context.user_data.get(LOG_TIPE)
+    if not tipe:
+        return
+    
+    pohon_info = context.user_data.get(LOG_POHON_INFO, "Pohon")
+    
+    # === FOTO ===
+    if tipe == "foto" and update.message.photo:
+        try:
+            file = await context.bot.get_file(update.message.photo[-1].file_id)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"pohon_{pohon_id}_log_{timestamp}.jpg"
+            filepath = os.path.join(UPLOAD_DOKUMEN, filename)
+            await file.download_to_drive(filepath)
+            url = f"/uploads/dokumen_lembaga/{filename}"
+            
+            from modul_mitra_alam import tambah_log
+            sukses, pesan = tambah_log(
+                pohon_id, tipe="foto", foto_url=url,
+                nilai="Foto update", catatan="Update foto berkala",
+                petugas_id=update.effective_user.id
+            )
+            
+            if sukses:
+                await update.message.reply_text(
+                    f"✅ *Foto tersimpan untuk {pohon_info}*\n\n"
+                    f"📸 Log foto ditambahkan.",
+                    parse_mode='Markdown'
+                )
+            else:
+                await update.message.reply_text(f"❌ Gagal: {pesan}")
+        except Exception as e:
+            logger.error(f"Error simpan foto log: {e}")
+            await update.message.reply_text(f"❌ Error: {e}")
+        
+        context.user_data.clear()
+        return
+    
+    # === TINGGI ===
+    if tipe == "tinggi" and update.message.text:
+        try:
+            tinggi = int(update.message.text.strip())
+            if tinggi < 10 or tinggi > 5000:
+                raise ValueError()
+        except ValueError:
+            await update.message.reply_text("❌ Kirim angka tinggi (cm) antara 10-5000.")
+            return
+        
+        # Ambil tinggi sebelumnya
+        conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+        c.execute("""SELECT nilai FROM pohon_log 
+                     WHERE pohon_id=? AND tipe='tinggi'
+                     ORDER BY tanggal DESC, id DESC LIMIT 1""", (pohon_id,))
+        prev = c.fetchone()
+        conn.close()
+        
+        prev_tinggi = None
+        if prev:
+            try:
+                prev_tinggi = int(str(prev[0]).replace(" cm", "").strip())
+            except (ValueError, AttributeError):
+                pass
+        
+        from modul_mitra_alam import tambah_log
+        sukses, pesan = tambah_log(
+            pohon_id, tipe="tinggi", nilai=f"{tinggi} cm",
+            catatan="Update tinggi berkala",
+            petugas_id=update.effective_user.id
+        )
+        
+        if sukses:
+            if prev_tinggi:
+                delta = tinggi - prev_tinggi
+                delta_str = f"+{delta}cm" if delta > 0 else f"{delta}cm"
+                msg = (
+                    f"✅ *Tinggi tersimpan untuk {pohon_info}*\n\n"
+                    f"📏 *{prev_tinggi}cm → {tinggi}cm* ({delta_str})"
+                )
+            else:
+                msg = (
+                    f"✅ *Tinggi tersimpan untuk {pohon_info}*\n\n"
+                    f"📏 *{tinggi}cm*"
+                )
+            await update.message.reply_text(msg, parse_mode='Markdown')
+        else:
+            await update.message.reply_text(f"❌ Gagal: {pesan}")
+        
+        context.user_data.clear()
+        return
+    
+    # === PUPUK / PENYAKIT ===
+    if tipe in ("pupuk", "penyakit") and update.message.text:
+        nilai = update.message.text.strip()
+        if not nilai:
+            await update.message.reply_text("❌ Keterangan tidak boleh kosong.")
+            return
+        
+        from modul_mitra_alam import tambah_log
+        sukses, pesan = tambah_log(
+            pohon_id, tipe=tipe, nilai=nilai,
+            catatan=f"Update {tipe}",
+            petugas_id=update.effective_user.id
+        )
+        
+        if sukses:
+            emoji = {"pupuk": "🌿", "penyakit": "⚠️"}[tipe]
+            await update.message.reply_text(
+                f"✅ *{tipe.title()} tersimpan untuk {pohon_info}*\n\n"
+                f"{emoji} {nilai}",
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text(f"❌ Gagal: {pesan}")
+        
+        context.user_data.clear()
+        return
+    
+    # === PANEN ===
+    if tipe == "panen" and update.message.text:
+        text = update.message.text.strip()
+        hasil_kg = 0
+        catatan = text
+        
+        if "|" in text:
+            parts = text.split("|", 1)
+            try:
+                hasil_kg = float(parts[0].strip())
+                catatan = parts[1].strip()
+            except ValueError:
+                await update.message.reply_text("❌ Format salah. Contoh: `5` atau `5 | keterangan`")
+                return
+        else:
+            try:
+                hasil_kg = float(text)
+                catatan = "Panen tercatat"
+            except ValueError:
+                await update.message.reply_text("❌ Format salah. Contoh: `5` atau `5 | keterangan`")
+                return
+        
+        from modul_mitra_alam import tambah_log
+        sukses, pesan = tambah_log(
+            pohon_id, tipe="panen", nilai=f"{hasil_kg} kg",
+            catatan=catatan,
+            petugas_id=update.effective_user.id
+        )
+        
+        if sukses:
+            await update.message.reply_text(
+                f"✅ *Panen tersimpan untuk {pohon_info}*\n\n"
+                f"🌾 Hasil: *{hasil_kg} kg*\n"
+                f"📝 {catatan}",
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text(f"❌ Gagal: {pesan}")
+        
+        context.user_data.clear()
+        return
+
+
+async def handle_log_kondisi_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler pilihan kondisi setelah /logpohon."""
+    query = update.callback_query
+    await query.answer()
+    
+    pohon_id = context.user_data.get(LOG_POHON_ID)
+    if not pohon_id:
+        await safe_edit(query, "⚠️ Sesi kadaluarsa. Mulai ulang `/logpohon`.")
+        return
+    
+    data = query.data
+    kondisi_map = {
+        "log_kondisi_sehat": "sehat",
+        "log_kondisi_cukup": "cukup",
+        "log_kondisi_lemah": "lemah",
+    }
+    kondisi = kondisi_map.get(data)
+    if not kondisi:
+        return
+    
+    pohon_info = context.user_data.get(LOG_POHON_INFO, "Pohon")
+    
+    from modul_mitra_alam import tambah_log
+    sukses, pesan = tambah_log(
+        pohon_id, tipe="kondisi", nilai=kondisi,
+        catatan="Update kondisi berkala",
+        petugas_id=update.effective_user.id
+    )
+    
+    if sukses:
+        emoji = {"sehat": "✅", "cukup": "🟡", "lemah": "⚠️"}[kondisi]
+        await safe_edit(query,
+            f"✅ *Kondisi tersimpan untuk {pohon_info}*\n\n"
+            f"{emoji} Kondisi: *{kondisi.title()}*",
+            parse_mode='Markdown'
+        )
+    else:
+        await safe_edit(query, f"❌ Gagal: {pesan}")
+    
+    context.user_data.clear()    
+
+
+# =====================================================================
+# HANDLER: /panen — Catat Panen & Bagi Hasil (Step 12)
+# =====================================================================
+
+PANEN_POHON_ID = "panen_pohon_id"
+PANEN_POHON_INFO = "panen_pohon_info"
+PANEN_DATA_TEMP = "panen_data_temp"
+
+
+async def cmd_panen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /panen <uid> — Catat panen & bagi hasil otomatis (70/20/10).
+    """
+    if not update.message:
+        return
+    
+    user_id = update.effective_user.id
+    
+    if not _is_petugas(user_id):
+        await update.message.reply_text(
+            "❌ Hanya petugas Mitra Alam (Super Admin / Admin Lembaga) "
+            "yang bisa catat panen."
+        )
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ Format: `/panen [NFC UID]`\n\n"
+            "Contoh: `/panen TEST003GHI`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    uid = context.args[0].strip().upper()
+    
+    # Cek pohon ada & status aktif
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT p.id, p.nfc_uid, k.nama_display, p.status, p.lembaga_id
+                 FROM pohon_wakaf p
+                 JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                 WHERE p.nfc_uid=?""", (uid,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        await update.message.reply_text(
+            f"❌ Pohon dengan UID `{uid}` tidak ditemukan.\n\n"
+            f"Input pohon baru dulu dengan `/pohon`.",
+            parse_mode='Markdown'
+        )
+        return
+    
+    pohon_id, nfc_uid, komoditas, status, lembaga_id = row
+    
+    if status == 'mati':
+        await update.message.reply_text(
+            f"⚠️ Pohon *{komoditas} #{pohon_id}* sudah mati. Tidak bisa panen.",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Simpan state
+    context.user_data.clear()
+    context.user_data[PANEN_POHON_ID] = pohon_id
+    context.user_data[PANEN_POHON_INFO] = f"{komoditas} #{pohon_id}"
+    
+    await update.message.reply_text(
+        f"🌾 *CATAT PANEN — {komoditas} #{pohon_id}*\n\n"
+        f"📡 UID: `{nfc_uid}`\n"
+        f"Status: {status}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Kirim data panen dengan format:\n"
+        f"`berat_kg | harga_per_kg`\n\n"
+        f"*Contoh:*\n"
+        f"`5 | 50000`\n"
+        f"artinya 5 kg × Rp 50.000 = Rp 250.000\n\n"
+        f"Atau dengan catatan:\n"
+        f"`5 | 50000 | buah manis`\n\n"
+        f"_Ketik /batal untuk membatalkan._",
+        parse_mode='Markdown'
+    )
+
+
+async def handle_panen_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Terima input panen & tampilkan konfirmasi."""
+    if not update.message or not update.message.text:
+        return
+    
+    pohon_id = context.user_data.get(PANEN_POHON_ID)
+    if not pohon_id:
+        return
+    
+    pohon_info = context.user_data.get(PANEN_POHON_INFO, "Pohon")
+    text = update.message.text.strip()
+    
+    # Parse input: kg | harga | catatan
+    parts = [p.strip() for p in text.split("|")]
+    
+    if len(parts) < 2:
+        await update.message.reply_text(
+            "❌ Format salah. Minimal: `kg | harga_per_kg`\n"
+            "Contoh: `5 | 50000`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    try:
+        hasil_kg = float(parts[0])
+        harga_per_kg = float(parts[1])
+        catatan = parts[2] if len(parts) > 2 else "Panen tercatat"
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Angka tidak valid. Contoh: `5 | 50000`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    if hasil_kg <= 0 or harga_per_kg <= 0:
+        await update.message.reply_text("❌ Berat & harga harus > 0.")
+        return
+    
+    total = hasil_kg * harga_per_kg
+    bagi_masjid = total * 0.70
+    bagi_perawatan = total * 0.20
+    bagi_raudha = total * 0.10
+    
+    # Simpan data sementara
+    context.user_data[PANEN_DATA_TEMP] = {
+        "hasil_kg": hasil_kg,
+        "harga_per_kg": harga_per_kg,
+        "total": total,
+        "bagi_masjid": bagi_masjid,
+        "bagi_perawatan": bagi_perawatan,
+        "bagi_raudha": bagi_raudha,
+        "catatan": catatan,
+    }
+    
+    # Format rupiah
+    def fmt(n):
+        return f"Rp {int(n):,}".replace(",", ".")
+    
+    keyboard = [
+        [InlineKeyboardButton("✅ Konfirmasi & Simpan", callback_data="panen_confirm")],
+        [InlineKeyboardButton("❌ Batal", callback_data="panen_cancel")],
+    ]
+    
+    await update.message.reply_text(
+        f"📊 *KONFIRMASI PANEN — {pohon_info}*\n\n"
+        f"📦 Hasil: *{hasil_kg} kg*\n"
+        f"💵 Harga: *{fmt(harga_per_kg)}/kg*\n"
+        f"💰 Total: *{fmt(total)}*\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"*Bagi Hasil Otomatis:*\n"
+        f"🕌 Masjid (70%): *{fmt(bagi_masjid)}*\n"
+        f"🌿 Perawatan (20%): *{fmt(bagi_perawatan)}*\n"
+        f"🏛️ Raudha (10%): *{fmt(bagi_raudha)}*\n\n"
+        f"📝 Catatan: _{catatan}_\n\n"
+        f"_Konfirmasi untuk menyimpan._",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def handle_panen_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler tombol konfirmasi/batal panen."""
+    query = update.callback_query
+    
+    # DEBUG LOG
+    logger.info(f"[PANEN] Confirm clicked by user {update.effective_user.id}")
+    logger.info(f"[PANEN] user_data keys: {list(context.user_data.keys())}")
+    logger.info(f"[PANEN] pohon_id: {context.user_data.get(PANEN_POHON_ID)}")
+    logger.info(f"[PANEN] temp exists: {context.user_data.get(PANEN_DATA_TEMP) is not None}")
+    logger.info(f"[PANEN] callback data: {query.data}")
+    
+    await query.answer()
+    
+    data = query.data
+    pohon_id = context.user_data.get(PANEN_POHON_ID)
+    pohon_info = context.user_data.get(PANEN_POHON_INFO, "Pohon")
+    temp = context.user_data.get(PANEN_DATA_TEMP)
+    
+    if not pohon_id or not temp:
+        await safe_edit(query, "⚠️ Sesi kadaluarsa. Mulai ulang `/panen`.")
+        return
+    
+    if data == "panen_cancel":
+        context.user_data.clear()
+        await safe_edit(query, "❌ Panen dibatalkan.")
+        return
+    
+    if data != "panen_confirm":
+        return
+    
+    # Simpan ke database
+    from modul_mitra_alam import catat_panen
+    
+    tanggal = date.today().strftime("%Y-%m-%d")
+    
+    sukses, pesan = catat_panen(
+        pohon_id=pohon_id,
+        tanggal_panen=tanggal,
+        hasil_kg=temp["hasil_kg"],
+        hasil_nominal=temp["total"],
+        catatan=temp["catatan"],
+        petugas_id=update.effective_user.id
+    )
+    
+    if not sukses:
+        await safe_edit(query, f"❌ Gagal: {pesan}")
+        context.user_data.clear()
+        return
+    
+    # Hitung total panen kumulatif
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT COUNT(*), COALESCE(SUM(hasil_nominal), 0),
+                        COALESCE(SUM(pembagian_masjid), 0)
+                 FROM pohon_panen WHERE pohon_id=?""", (pohon_id,))
+    count, total_all, total_masjid = c.fetchone()
+    conn.close()
+    
+    def fmt(n):
+        return f"Rp {int(n):,}".replace(",", ".")
+    
+    await safe_edit(query,
+        f"✅ *PANEN TERSIMPAN!*\n\n"
+        f"🌳 {pohon_info}\n"
+        f"📅 {tanggal}\n\n"
+        f"📊 *Panen Ini:*\n"
+        f"🌾 {temp['hasil_kg']} kg × {fmt(temp['harga_per_kg'])} = *{fmt(temp['total'])}*\n"
+        f"🕌 Masjid: {fmt(temp['bagi_masjid'])}\n"
+        f"🌿 Perawatan: {fmt(temp['bagi_perawatan'])}\n"
+        f"🏛️ Raudha: {fmt(temp['bagi_raudha'])}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📊 *Total Pohon Ini:*\n"
+        f"🔄 Panen: *{count}x*\n"
+        f"💰 Total hasil: *{fmt(total_all)}*\n"
+        f"🕌 Total ke masjid: *{fmt(total_masjid)}*\n\n"
+        f"_Jazakallahu khairan untuk kerja lapangannya._ 🤲",
+        parse_mode='Markdown'
+    )
+    
+    # Log
+    logger.info(f"🌾 Panen #{pohon_id}: {temp['hasil_kg']}kg × {temp['harga_per_kg']} = Rp {temp['total']:,.0f}")
+    
+    context.user_data.clear()
 
 # =====================================================================
 # 13. RUNNER
@@ -1907,6 +3417,8 @@ def main():
     # --- BACKUP COMMANDS (Batch 16a) ---
     app.add_handler(CommandHandler("backup", cmd_backup))
     app.add_handler(CommandHandler("listbackup", cmd_list_backup))
+    app.add_handler(CommandHandler("backupmingguan", cmd_backup_mingguan))
+    app.add_handler(CommandHandler("testemail", cmd_test_email))
 
        
     # --- RESTORE COMMANDS (Batch 16b) ---
@@ -1918,6 +3430,9 @@ def main():
     app.add_handler(CommandHandler("kota", handle_command_kota))
     app.add_handler(CommandHandler("masuk", handle_masuk))
     app.add_handler(CommandHandler("keluar", handle_keluar))
+
+    # --- COMMAND HANDLERS VERIFIKASI ---
+    app.add_handler(CommandHandler("mode_verifikasi", cmd_mode_verifikasi))
 
     # --- MESSAGE HANDLERS ---
     app.add_handler(MessageHandler(filters.LOCATION, handle_location_received))
@@ -1985,6 +3500,36 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_masjid_menu, pattern="^(menu_masjid|masjid_ganti|masjid_cari_kota|masjid_daftar_raudha|masjid_daftar_jaringan|masjid_daftar_baru)$"))
     app.add_handler(CommandHandler("carimasjid", cmd_cari_masjid))
 
+    # Handler Mitra Alam (menu Tanam)
+    app.add_handler(CallbackQueryHandler(handle_mitra_alam_about, pattern="^mitra_alam_about$"))
+    app.add_handler(CallbackQueryHandler(handle_mitra_alam_komoditas, pattern="^mitra_alam_komoditas$"))
+
+        # Command /pohon — petugas input NFC
+    app.add_handler(CommandHandler("pohon", cmd_input_pohon))
+    app.add_handler(CommandHandler("logpohon", cmd_logpohon))
+    app.add_handler(CommandHandler("panen", cmd_panen))
+   
+    app.add_handler(CallbackQueryHandler(handle_pohon_kondisi_callback, pattern="^pohon_kondisi_"))
+    app.add_handler(CallbackQueryHandler(handle_log_tipe_callback, pattern="^log_tipe_"))
+    app.add_handler(CallbackQueryHandler(handle_log_kondisi_callback, pattern="^log_kondisi_"))
+    app.add_handler(CallbackQueryHandler(handle_panen_confirm, pattern="^panen_(confirm|cancel)$")) 
+
+    app.add_handler(CommandHandler("debug_role", cmd_debug_role))
+    
+    # Router state /pohon (harus SETELAH handler lain agar tidak konflik)
+    app.add_handler(MessageHandler(
+        filters.TEXT | filters.PHOTO,
+        handle_pohon_state
+    ), group=2)  # group=2 agar tidak konflik dengan handler RSVP
+    app.add_handler(MessageHandler(
+        (filters.TEXT | filters.PHOTO) & ~filters.COMMAND,
+        handle_log_input
+    ), group=3)
+    app.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        handle_panen_input
+    ), group=4)
+
     logger.info("✅ Bot Raudha siap digunakan...")
 
     # =====================================================================
@@ -1998,6 +3543,10 @@ def main():
         app.job_queue.run_repeating(cek_pembayaran_diverifikasi, interval=30, first=15)
         # Cek pengajuan lembaga baru setiap 60 detik
         app.job_queue.run_repeating(cek_pengajuan_lembaga_baru, interval=60, first=20)
+
+        # NOTIF WAKAF POHON (STEP 7)
+        app.job_queue.run_repeating(cek_wakaf_diverifikasi, interval=30, first=20)
+        app.job_queue.run_repeating(cek_wakaf_bukti_baru, interval=30, first=25)
         
         # Backup harian jam 00:00 WIB (17:00 UTC)
         from datetime import time as _time
@@ -2006,6 +3555,15 @@ def main():
             time=_time(hour=17, minute=0, second=0),  # 00:00 WIB
             name="backup_harian"
         )
+
+        # Backup mingguan permanen — Minggu 00:05 WIB (17:05 UTC Sabtu)
+        app.job_queue.run_daily(
+            backup_mingguan,
+            time=_time(hour=17, minute=5, second=0),
+            days=(6,),  # 6 = Minggu (0=Senin ... 6=Minggu)
+            name="backup_mingguan"
+        )
+        logger.info("✅ JobQueue backup mingguan aktif (Minggu 00:05 WIB)")
         
         logger.info("✅ JobQueue notifikasi aktif (30s/30s/60s)")
         logger.info("✅ JobQueue backup harian aktif (00:00 WIB)")

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papan Informasi - {{ nama_masjid }}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background: radial-gradient(circle at top, #1e293b 0%, #020617 100%);
+        color: white;
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow-y: auto;
+    }
+    @media (min-width: 1024px) {
+        body { overflow: hidden; height: 100vh; }
+    }
+
+    .bg-particles {
+        position: absolute; inset: 0;
+        background-image: radial-gradient(#fbbf24 1px, transparent 1px);
+        background-size: 40px 40px; opacity: 0.03; pointer-events: none;
+    }
+    .font-serif { font-family: 'Playfair Display', serif; }
+
+    /* Efek Teks Emas */
+    .title-glow {
+        background: linear-gradient(to right, #fcd34d, #fbbf24, #d97706);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+    }
+
+    /* Kartu Menu Ringkas */
+    .menu-card {
+        background: rgba(30, 41, 59, 0.4);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .menu-card:hover, .menu-card:focus {
+        transform: translateY(-5px);
+        border-color: rgba(251, 191, 36, 0.8);
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+        background: rgba(30, 41, 59, 0.7);
+    }
+
+    /* Running Text */
+    .marquee-container {
+        overflow: hidden;
+        white-space: nowrap;
+        background: rgba(251, 191, 36, 0.1);
+        border-top: 1px solid rgba(251, 191, 36, 0.3);
+        border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .marquee-text {
+        display: inline-block;
+        animation: marquee 25s linear infinite;
+        padding-left: 100%;
+    }
+    @keyframes marquee {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+    }
+</style>
+</head>
+<body>
+
+    <div class="bg-particles"></div>
+
+    <!-- ================= BAGIAN ATAS: HEADER & RUNNING TEXT ================= -->
+    <div class="w-full relative z-10 flex-shrink-0 pt-4 pb-2">
+        <div class="text-center mb-2">
+            <h1 class="text-3xl md:text-4xl font-serif font-black title-glow tracking-wider">{{ nama_masjid | upper }}</h1>
+        </div>
+        
+        <!-- Running Text (Kabar Pagi & Info Umum) -->
+        <div class="marquee-container py-2">
+            <div class="marquee-text text-amber-200 text-sm md:text-base font-semibold tracking-wide">
+                📢 Selamat Datang di {{ nama_masjid }} • Jangan lupa matikan HP saat sholat • Mari makmurkan masjid dengan sholat berjamaah • Kabar Pagi Raudha: "Sebaik-baik manusia adalah yang paling bermanfaat bagi manusia lainnya" (HR. Ahmad)
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BAGIAN TENGAH: TOMBOL MENU (RINGKAS) ================= -->
+    <div class="w-full max-w-4xl mx-auto px-6 py-4 relative z-10 flex-shrink-0">
+               <div class="grid grid-cols-3 gap-4">
+            <!-- Menu 1: Jam Sholat -->
+            <a href="/display{% if tv_code %}?tv={{ tv_code }}{% endif %}" class="menu-card rounded-2xl p-4 flex flex-col items-center justify-center h-32 group">
+                <span class="text-4xl mb-2 filter drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]">🕌</span>
+                <h2 class="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">Jam Sholat</h2>
+            </a>
+
+            <!-- Menu 2: Live Streaming (TAMBAHKAN ?tv=) -->
+            <a href="/streaming{% if tv_code %}?tv={{ tv_code }}{% endif %}" class="menu-card rounded-2xl p-4 flex flex-col items-center justify-center h-32 group">
+                <span class="text-4xl mb-2 filter drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]">📺</span>
+                <h2 class="text-lg font-bold text-white group-hover:text-rose-300 transition-colors">Live Streaming</h2>
+            </a>
+
+            <!-- Menu 3: Kas & Zakat (TAMBAHKAN ?tv=) -->
+            <a href="/tv/zakat?masjid={{ lembaga_id if lembaga_id else 1 }}{% if tv_code %}&tv={{ tv_code }}{% endif %}" class="menu-card rounded-2xl p-4 flex flex-col items-center justify-center h-32 group">
+                <span class="text-4xl mb-2 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">💰</span>
+                <h2 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Kas & Zakat</h2>
+            </a>
+        </div>
+    </div>
+
+    <!-- ================= BAGIAN BAWAH: PANEL INFORMASI ================= -->
+    <div class="flex-1 w-full max-w-6xl mx-auto px-6 pb-6 relative z-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+            
+            <!-- Panel Kiri: Hari Besar Islam -->
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 backdrop-blur-sm">
+                <h3 class="text-lg font-bold text-amber-400 border-b border-slate-700 pb-2 mb-3 flex items-center gap-2">
+                    <span>📅</span> Kalender & Hari Besar
+                </h3>
+                <div class="space-y-3">
+                    {% for item in hari_besar %}
+                    <div class="flex items-center gap-3 bg-slate-900/50 p-2 rounded-lg">
+                        <div class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2 py-1 rounded">{{ item.tgl }}</div>
+                        <p class="text-sm text-slate-200 font-semibold">{{ item.nama }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Panel Kanan: Kegiatan Masjid -->
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 backdrop-blur-sm">
+                <h3 class="text-lg font-bold text-emerald-400 border-b border-slate-700 pb-2 mb-3 flex items-center gap-2">
+                    <span>🕌</span> Agenda & Kegiatan
+                </h3>
+                <div class="space-y-3">
+                    {% for item in kegiatan %}
+                    <div class="flex flex-col bg-slate-900/50 p-2 rounded-lg border-l-4 border-emerald-500">
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-white font-bold">{{ item.nama }}</p>
+                            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">{{ item.waktu }}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">👤 {{ item.pemateri }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
