@@ -35,6 +35,9 @@ TELEGRAM_BOT_TOKEN = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
 if not TELEGRAM_BOT_TOKEN:
     logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak ditemukan — verifikasi initData akan gagal")
 
+# ===== MINI APP URL (untuk QR code sertifikat wakaf) =====
+MINI_APP_URL = (os.getenv("MINI_APP_URL") or "https://raudha.id").strip().rstrip("/")
+
 HARGA_EMAS_BASE   = 1_050_000
 BASELINE_AWAL     = 100_000
 HARGA_TANI_PER_KG = 0
@@ -1596,6 +1599,25 @@ def init_web_db():
     row_mode = c.fetchone()
     current_mode = row_mode[0] if row_mode else 'super_only'
     logger.info(f"⚙️ Program config: wakaf_verification_mode={current_mode}")
+
+    # =================================================================
+    # 13. SERTIFIKAT WAKAF (Step 13)
+    # =================================================================
+    c.execute("""CREATE TABLE IF NOT EXISTS sertifikat_wakaf (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pohon_id INTEGER NOT NULL,
+        nomor_dokumen TEXT UNIQUE NOT NULL,
+        user_id INTEGER,
+        hash_dokumen TEXT,
+        generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        downloaded_count INTEGER DEFAULT 0,
+        FOREIGN KEY (pohon_id) REFERENCES pohon_wakaf(id)
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_sertifikat_pohon ON sertifikat_wakaf(pohon_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_sertifikat_nomor ON sertifikat_wakaf(nomor_dokumen)")
+    logger.info("✅ Tabel sertifikat_wakaf siap")
+
+
 
     # =================================================================
     # COMMIT & CLOSE
@@ -4232,6 +4254,293 @@ def generate_hash_dokumen(nomor_dokumen, user_id, total_zakat):
     return hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
 
 
+# =====================================================================
+# SERTIFIKAT PDF WAKAF (Step 13)
+# =====================================================================
+
+def generate_nomor_sertifikat_wakaf(pohon_id, tanggal_tanam):
+    """Generate nomor dokumen sertifikat wakaf: RDH/WKF/YYYY/MM/NNNN"""
+    try:
+        dt_tanam = datetime.strptime(tanggal_tanam, "%Y-%m-%d")
+        prefix = f"RDH/WKF/{dt_tanam.year}/{dt_tanam.month:02d}"
+    except (ValueError, TypeError):
+        now = dt.now()
+        prefix = f"RDH/WKF/{now.year}/{now.month:02d}"
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM sertifikat_wakaf WHERE nomor_dokumen LIKE ?", (f"{prefix}/%",))
+    count = c.fetchone()[0] + 1
+    conn.close()
+    return f"{prefix}/{count:04d}"
+
+
+def generate_hash_wakaf(nomor, pohon_id, nfc_uid):
+    """Hash SHA-256 untuk keaslian sertifikat wakaf (deterministik)."""
+    raw = f"{nomor}|{pohon_id}|{nfc_uid}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16].upper()
+
+
+def generate_qr_wakaf(nomor):
+    """QR code → halaman verifikasi /verify-wakaf/<nomor>."""
+    qr = qrcode.QRCode(version=1, box_size=6, border=2)
+    qr.add_data(f"{MINI_APP_URL}/verify-wakaf/{nomor}" if MINI_APP_URL else f"https://raudha.id/verify-wakaf/{nomor}")
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return buf
+
+@app.route('/api/export/pdf/wakaf/<int:pohon_id>', methods=['GET'])
+def export_pdf_sertifikat_wakaf(pohon_id):
+    """Generate PDF sertifikat wakaf pohon."""
+    # === AUTH CHECK ===
+    req_user_id_raw = request.args.get('user_id') or request.headers.get('X-User-Id', '')
+    try:
+        req_user_id = int(req_user_id_raw) if req_user_id_raw else None
+    except (ValueError, TypeError):
+        req_user_id = None
+    
+    # === END AUTH CHECK ===
+    
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    
+    # Ambil data pohon + komoditas + lembaga + muwakif
+    c.execute("""SELECT 
+                    p.id, p.nfc_uid, p.tanggal_tanam, p.status, p.catatan,
+                    p.muwakif_id, p.lembaga_id,
+                    k.nama_display, k.output, k.siklus_panen, k.deskripsi,
+                    l.nama AS lembaga_nama, l.alamat AS lembaga_alamat,
+                    u.nama_lengkap AS muwakif_nama
+                 FROM pohon_wakaf p
+                 JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                 JOIN lembaga_amil l ON l.id = p.lembaga_id
+                 LEFT JOIN users_config u ON u.user_id = p.muwakif_id
+                 WHERE p.id = ?""", (pohon_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"status": "error", "message": "Pohon tidak ditemukan"}), 404
+    
+    (pid, nfc_uid, tgl_tanam, status, catatan,
+     muwakif_id, lembaga_id,
+     komoditas, output, siklus, deskripsi,
+     lembaga_nama, lembaga_alamat, muwakif_nama) = row
+    
+    # Auth: pohon harus berstatus aktif (sudah ditanam & NFC)
+    if status not in ('aktif', 'dipanen'):
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": f"Sertifikat hanya bisa dibuat untuk pohon berstatus aktif/dipanen (saat ini: {status})"
+        }), 400
+    
+    # Auth check
+    if req_user_id:
+        if req_user_id != muwakif_id:
+            info = get_user_role(req_user_id)
+            if info.get("role") != "super_admin":
+                if info.get("role") == "admin_lembaga":
+                    if info.get("lembaga_id") != lembaga_id:
+                        conn.close()
+                        return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+                else:
+                    conn.close()
+                    return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+    
+    # Nomor sertifikat
+    nomor = generate_nomor_sertifikat_wakaf(pid, tgl_tanam)
+    hash_doc = generate_hash_wakaf(nomor, pid, nfc_uid)
+    qr_buf = generate_qr_wakaf(nomor)
+    
+    # Simpan/update sertifikat di DB
+    c.execute("""SELECT id FROM sertifikat_wakaf WHERE pohon_id=?""", (pid,))
+    existing = c.fetchone()
+    if existing:
+        c.execute("""UPDATE sertifikat_wakaf 
+                     SET nomor_dokumen=?, hash_dokumen=?, downloaded_count=COALESCE(downloaded_count,0)+1
+                     WHERE pohon_id=?""", (nomor, hash_doc, pid))
+    else:
+        c.execute("""INSERT INTO sertifikat_wakaf 
+                     (pohon_id, nomor_dokumen, user_id, hash_dokumen, downloaded_count)
+                     VALUES (?, ?, ?, ?, 1)""",
+                  (pid, nomor, muwakif_id, hash_doc))
+    conn.commit()
+    
+    # Ambil total panen
+    c.execute("""SELECT COUNT(*), COALESCE(SUM(hasil_kg),0), COALESCE(SUM(hasil_nominal),0),
+                        COALESCE(SUM(pembagian_masjid),0)
+                 FROM pohon_panen WHERE pohon_id=?""", (pid,))
+    p_count, p_kg, p_total, p_masjid = c.fetchone()
+    conn.close()
+    
+    # === BUILD PDF ===
+    pdf_buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        pdf_buf, pagesize=A4,
+        leftMargin=15*mm, rightMargin=15*mm,
+        topMargin=12*mm, bottomMargin=14*mm,
+        title=f"Sertifikat Wakaf - {komoditas} #{pid}",
+        author="Raudha Spiritual Accountant",
+    )
+    
+    styles = getSampleStyleSheet()
+    style_title = ParagraphStyle('Title', parent=styles['Heading1'],
+        fontSize=18, textColor=colors.HexColor('#065f46'),
+        alignment=1, spaceAfter=6, fontName='Helvetica-Bold')
+    style_subtitle = ParagraphStyle('Subtitle', parent=styles['Normal'],
+        fontSize=10, textColor=colors.HexColor('#64748b'),
+        alignment=1, spaceAfter=4)
+    style_section = ParagraphStyle('Section', parent=styles['Heading2'],
+        fontSize=12, textColor=colors.HexColor('#065f46'),
+        spaceBefore=12, spaceAfter=6, fontName='Helvetica-Bold')
+    style_normal = ParagraphStyle('Normal', parent=styles['Normal'],
+        fontSize=10, textColor=colors.HexColor('#1e293b'), leading=14)
+    style_doa = ParagraphStyle('Doa', parent=styles['Normal'],
+        fontSize=10, textColor=colors.HexColor('#92400e'),
+        leading=14, alignment=4, fontName='Helvetica-Oblique')
+    style_legal = ParagraphStyle('Legal', parent=styles['Normal'],
+        fontSize=8, textColor=colors.HexColor('#475569'),
+        leading=11, alignment=4)
+    style_footer = ParagraphStyle('Footer', parent=styles['Normal'],
+        fontSize=7, textColor=colors.HexColor('#94a3b8'), alignment=1)
+    
+    story = []
+    
+    # KOP
+    story.append(Paragraph("RAUDHA SPIRITUAL ACCOUNTANT", style_title))
+    story.append(Paragraph(
+        "Sistem Wakaf Produktif Digital | Mitra Alam Raudha<br/>"
+        "Website: raudha.id | Email: admin@raudha.id | WhatsApp: +62 821-6069-0554",
+        style_subtitle))
+    story.append(Spacer(1, 2*mm))
+    
+    line = Table([['']], colWidths=[180*mm], rowHeights=[1])
+    line.setStyle(TableStyle([('LINEABOVE', (0,0), (-1,0), 2, colors.HexColor('#065f46'))]))
+    story.append(line)
+    story.append(Spacer(1, 3*mm))
+    
+    # JUDUL
+    story.append(Paragraph("SERTIFIKAT WAKAF PRODUKTIF", style_title))
+    story.append(Paragraph(f"Nomor: {nomor}", style_subtitle))
+    story.append(Spacer(1, 5*mm))
+    
+    # IDENTITAS MUWAKIF
+    story.append(Paragraph("A. IDENTITAS MUWAKIF", style_section))
+    identitas = [
+        ['Nama Muwakif', ':', muwakif_nama or '-'],
+        ['User ID', ':', str(muwakif_id) if muwakif_id else '-'],
+        ['Doa / Hajat', ':', catatan or '-'],
+    ]
+    id_table = Table(identitas, colWidths=[40*mm, 5*mm, 135*mm])
+    id_table.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(id_table)
+    story.append(Spacer(1, 3*mm))
+    
+    # INFO POHON
+    story.append(Paragraph("B. IDENTITAS POHON WAKAF", style_section))
+    info_pohon = [
+        ['Komoditas', ':', komoditas],
+        ['UID NFC', ':', nfc_uid],
+        ['Tanggal Tanam', ':', tgl_tanam or '-'],
+        ['Status', ':', status.upper()],
+        ['Lokasi Tanam', ':', lembaga_nama],
+        ['Alamat', ':', lembaga_alamat or '-'],
+        ['Siklus Panen', ':', siklus or '-'],
+    ]
+    info_table = Table(info_pohon, colWidths=[40*mm, 5*mm, 135*mm])
+    info_table.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 3*mm))
+    
+    # RINGKASAN PANEN (kalau ada)
+    if p_count > 0:
+        story.append(Paragraph("C. RINGKASAN HASIL PANEN", style_section))
+        panen_data = [
+            ['Jumlah Panen', ':', f"{p_count}x"],
+            ['Total Hasil', ':', f"{p_kg} kg"],
+            ['Nilai Ekonomi', ':', f"Rp {int(p_total):,}".replace(",", ".")],
+            ['Kontribusi ke Masjid (70%)', ':', f"Rp {int(p_masjid):,}".replace(",", ".")],
+        ]
+        panen_table = Table(panen_data, colWidths=[60*mm, 5*mm, 115*mm])
+        panen_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 9),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        story.append(panen_table)
+    else:
+        story.append(Paragraph("C. RINGKASAN HASIL PANEN", style_section))
+        story.append(Paragraph("<i>Belum ada panen. Pohon sedang dalam masa pertumbuhan.</i>", style_normal))
+    
+    story.append(Spacer(1, 4*mm))
+    
+    # LEGAL
+    story.append(Paragraph("D. KETERANGAN LEGAL", style_section))
+    story.append(Paragraph(
+        "Sertifikat ini diterbitkan sebagai bukti sah penunaian wakaf produktif sesuai "
+        "<b>Undang-Undang No. 41 Tahun 2004 tentang Wakaf</b> dan "
+        "<b>Peraturan Badan Wakaf Indonesia No. 1 Tahun 2020</b>. "
+        "Pohon yang diwakafkan bersifat tetap (tidak dapat dijual/diwariskan), "
+        "sedangkan manfaatnya (hasil panen) disalurkan sesuai skema: 70% masjid/pesantren, "
+        "20% biaya perawatan, 10% pengelolaan Raudha. "
+        "Sertifikat ini dapat diverifikasi keasliannya melalui QR code di bawah.",
+        style_legal))
+    story.append(Spacer(1, 4*mm))
+    
+    # TANDA TANGAN & QR
+    qr_img = Image(qr_buf, width=32*mm, height=32*mm)
+    ttd = [
+        [qr_img, Paragraph(
+            f"<b>Raudha Spiritual Accountant</b><br/><br/>"
+            f"<b>(Digital Signature)</b><br/>"
+            f"Hash: <font name='Courier'>{hash_doc}</font><br/>"
+            f"<i>Scan QR untuk verifikasi keaslian.</i>",
+            style_normal)]
+    ]
+    ttd_table = Table(ttd, colWidths=[38*mm, 142*mm])
+    ttd_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (0,0), (0,0), 'CENTER'),
+        ('LEFTPADDING', (1,0), (1,0), 10),
+    ]))
+    story.append(ttd_table)
+    story.append(Spacer(1, 3*mm))
+    
+    # Footer
+    footer_line = Table([['']], colWidths=[180*mm], rowHeights=[0.5])
+    footer_line.setStyle(TableStyle([('LINEABOVE', (0,0), (-1,0), 1, colors.HexColor('#065f46'))]))
+    story.append(footer_line)
+    story.append(Spacer(1, 1*mm))
+    story.append(Paragraph(
+        f"Dicetak pada: {dt.now().strftime('%d %B %Y, %H:%M WIB')} | "
+        f"Sertifikat ini sah tanpa tanda tangan basah.",
+        style_footer))
+    
+    doc.build(story)
+    pdf_buf.seek(0)
+    
+    from flask import send_file
+    safe_kom = komoditas.replace(' ', '_').replace('/', '-')
+    safe_nomor = nomor.replace('/', '-')
+    return send_file(
+        pdf_buf,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"Sertifikat_Wakaf_{safe_kom}_{safe_nomor}.pdf"
+    )
+
 @app.route('/api/export/pdf/<int:user_id>', methods=['GET'])
 def export_pdf_laporan(user_id):
     """Generate PDF laporan zakat tahunan."""
@@ -4898,6 +5207,116 @@ def verify_doc_page(nomor):
         </body></html>
     """, nomor=nomor, nama=nama_muzakki, jenis=jenis_str,
         nominal=nominal_str, verified_at=verified_str, hash_doc=hash_doc)
+
+
+@app.route('/verify-wakaf/<path:nomor>')
+def verify_wakaf_page(nomor):
+    """Halaman verifikasi publik sertifikat wakaf (scan QR)."""
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""SELECT s.nomor_dokumen, s.hash_dokumen, s.generated_at, s.downloaded_count,
+                        p.id AS pohon_id, p.nfc_uid, p.tanggal_tanam, p.status,
+                        k.nama_display, l.nama AS lembaga_nama,
+                        u.nama_lengkap AS muwakif_nama
+                 FROM sertifikat_wakaf s
+                 JOIN pohon_wakaf p ON p.id = s.pohon_id
+                 JOIN komoditas_wakaf k ON k.id = p.komoditas_id
+                 JOIN lembaga_amil l ON l.id = p.lembaga_id
+                 LEFT JOIN users_config u ON u.user_id = s.user_id
+                 WHERE s.nomor_dokumen = ?""", (nomor,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row:
+        return render_template_string("""
+            <!DOCTYPE html>
+            <html><head><meta charset="UTF-8"><title>Sertifikat Tidak Ditemukan</title>
+            <script src="https://cdn.tailwindcss.com"></script></head>
+            <body class="bg-slate-50 min-h-screen p-6 flex items-center justify-center">
+                <div class="max-w-md mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-rose-600 to-rose-700 text-white p-6 text-center">
+                        <div class="text-6xl mb-2">❌</div>
+                        <h1 class="text-xl font-black">Sertifikat Tidak Ditemukan</h1>
+                        <p class="text-sm opacity-90 mt-1">Nomor: {{ nomor }}</p>
+                    </div>
+                    <div class="p-6 text-center text-sm text-slate-600">
+                        <p>Sertifikat dengan nomor ini tidak terdaftar di sistem Raudha.</p>
+                        <p class="mt-2 text-xs text-slate-400">Hati-hati terhadap pemalsuan.</p>
+                    </div>
+                </div>
+            </body></html>
+        """, nomor=nomor), 404
+    
+    (nomor_dok, hash_doc, generated_at, downloaded_count,
+     pohon_id, nfc_uid, tgl_tanam, status,
+     komoditas, lembaga_nama, muwakif_nama) = row
+    
+    return render_template_string("""
+        <!DOCTYPE html>
+        <html><head>
+            <meta charset="UTF-8">
+            <title>Verifikasi Sertifikat Wakaf</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-slate-50 min-h-screen p-6">
+            <div class="max-w-md mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 text-center">
+                    <div class="text-6xl mb-2">🌱</div>
+                    <h1 class="text-xl font-black">Sertifikat Wakaf Sah</h1>
+                    <p class="text-sm opacity-90 mt-1">Raudha Mitra Alam</p>
+                </div>
+                <div class="p-6 space-y-3 text-sm">
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Nomor</span>
+                        <strong class="font-mono text-xs">{{ nomor }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Komoditas</span>
+                        <strong>{{ komoditas }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">UID NFC</span>
+                        <strong class="font-mono text-xs">{{ nfc }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Muwakif</span>
+                        <strong>{{ muwakif or '-' }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Lokasi</span>
+                        <strong>{{ lembaga }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Tanggal Tanam</span>
+                        <strong>{{ tgl }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Status</span>
+                        <strong class="text-emerald-700">{{ status }}</strong>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Hash Dokumen</span>
+                        <strong class="font-mono text-xs">{{ hash }}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Diterbitkan</span>
+                        <strong>{{ generated }}</strong>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-3">
+                        <p class="text-xs text-emerald-800 leading-relaxed text-center">
+                            <b>✅ Sertifikat Ini Asli</b><br>
+                            Diterbitkan oleh Raudha Spiritual Accountant<br>
+                            sesuai UU No. 41 Tahun 2004 tentang Wakaf.
+                        </p>
+                    </div>
+                    <a href="/pohon/{{ nfc }}" class="block text-center bg-emerald-600 text-white font-bold py-3 rounded-xl mt-3 hover:bg-emerald-700">
+                        🌳 Lihat Detail Pohon
+                    </a>
+                </div>
+            </div>
+        </body></html>
+    """, nomor=nomor_dok, komoditas=komoditas, nfc=nfc_uid,
+        muwakif=muwakif_nama, lembaga=lembaga_nama, tgl=tgl_tanam,
+        status=status.upper(), hash=hash_doc or '-', generated=generated_at or '-')
 
 
 # =====================================================================

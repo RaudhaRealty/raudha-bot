@@ -248,6 +248,29 @@
     </div>
     {% endif %}
 
+    <!-- SERTIFIKAT WAKAF -->
+    {% if pohon.status in ['aktif', 'dipanen'] %}
+    <div class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 shadow-lg text-white">
+            <div class="flex items-start gap-3 mb-3">
+                <span class="text-3xl">📜</span>
+                <div class="flex-1">
+                    <p class="text-[10px] text-emerald-100 uppercase font-bold mb-1">Sertifikat Wakaf</p>
+                    <p class="text-sm font-bold">Bukti resmi wakaf pohon ini</p>
+                </div>
+            </div>
+            <p class="text-[11px] text-emerald-100 mb-3 leading-relaxed">
+                Sertifikat dengan nomor unik, QR verifikasi, dan legal standing UU No. 41/2004 tentang Wakaf.
+            </p>
+            <a href="/api/export/pdf/wakaf/{{ pohon.id }}"
+               class="block bg-white text-emerald-700 font-black py-3 rounded-xl text-center text-sm hover:bg-emerald-50 transition">
+                📥 Unduh Sertifikat PDF
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+
     <!-- BOTTOM ACTIONS -->
     <div class="max-w-md mx-auto px-4 mt-6 mb-8">
         <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 shadow-lg text-white text-center">
